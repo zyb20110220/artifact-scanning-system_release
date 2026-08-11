@@ -6,7 +6,7 @@
 
 | # | 任务 | 状态 | 完成日期 | 备注 |
 |---|------|------|---------|------|
-| 0.1 | K3s 集群搭建（3 节点：master + 2 worker） | ⬜ | | 虚拟机或物理机 |
+| 0.1 | K3s 集群搭建（3 节点：master + 2 worker） | ✅ | 2026-08-11 | k3d 开发集群，K3s v1.35.5 |
 | 0.2 | Harbor 私有镜像仓库 | ⬜ | | |
 | 0.3 | GitHub Actions CI/CD（构建 → 推镜像 → 部署） | ⬜ | | |
 | 0.4 | Prometheus + Grafana 监控栈 | ⬜ | | |
@@ -18,7 +18,14 @@
 <details>
 <summary><b>基础设施</b></summary>
 
-- [ ] 待开始
+- [x] 2026-08-11：K3s 集群搭建（k3d 3 节点：1 server + 2 agents）
+  - 交付：deploy/k3s/README.md + k3d/cluster.yaml + up/down/verify.ps1
+  - 遇到的问题：winget 安装 k3d 后 PATH 未刷新（脚本 Get-Command 找不到）；k3d v5 配置 schema 校验失败（servers/agents 应为整数而非数组）
+  - 解决方案：脚本增加 Find-K3d 自动定位（搜索 winget Links/Packages 目录并加入会话 PATH）；修正 cluster.yaml 为 servers: 1 / agents: 2
+  - 健壮性：up.ps1 幂等（集群已存在跳过创建）+ 自动合并 kubeconfig
+  - 结果：集群 artifact-scanning 创建成功，3 节点 Ready；Traefik Ingress 就绪；local-path StorageClass（default）可用；metrics-server 正常
+  - 环境：k3d 5.9.0 + kubectl 1.36.1 + Docker Desktop 29.6.2（纯 CPU）
+  - 端口映射：宿主机 8080→集群 80（HTTP Ingress），8443→443（HTTPS Ingress）
 </details>
 
 ---
