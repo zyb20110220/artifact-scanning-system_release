@@ -1,0 +1,99 @@
+expose:
+  type: nodePort
+  tls:
+    # 本地开发禁用 TLS
+    enabled: false
+  nodePort:
+    ports:
+      http:
+        # 通过 http://localhost:30002 访问Harbor
+        nodePort: 30002
+      https:
+        nodePort: 30003
+  ingress:
+    hosts:
+      core: core.harbor.local
+      notary: notary.harbor.local
+
+# 外部访问地址
+externalURL: http://localhost:30002
+
+# 管理员密码
+harborAdminPassword: "Harbor12345"
+
+# ---------- 持久化 ----------
+persistence:
+  enabled: true
+  persistentVolumeClaim:
+    registry:
+      storageClass: "local-path"
+      accessMode: ReadWriteOnce
+      size: 10Gi
+    database:
+      storageClass: "local-path"
+      accessMode: ReadWriteOnce
+      size: 2Gi
+    redis:
+      storageClass: "local-path"
+      accessMode: ReadWriteOnce
+      size: 1Gi
+    jobservice:
+      storageClass: "local-path"
+      accessMode: ReadWriteOnce
+      size: 1Gi
+
+# ---------- 资源限制 ----------
+core:
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+jobservice:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+registry:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+database:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+redis:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+trivy:
+  enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi

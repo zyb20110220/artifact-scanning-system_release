@@ -7,7 +7,7 @@
 | # | 任务 | 状态 | 完成日期 | 备注 |
 |---|------|------|---------|------|
 | 0.1 | K3s 集群搭建（3 节点：master + 2 worker） | ✅ | 2026-08-11 | k3d 开发集群，K3s v1.35.5 |
-| 0.2 | Harbor 私有镜像仓库 | ⬜ | | |
+| 0.2 | Harbor 私有镜像仓库 | ✅ | 2026-08-11 | Helm 部署（NodePort 30002，HTTP + Trivy） |
 | 0.3 | GitHub Actions CI/CD（构建 → 推镜像 → 部署） | ⬜ | | |
 | 0.4 | Prometheus + Grafana 监控栈 | ⬜ | | |
 | 0.5 | 开发规范（代码风格 / commit message / review） | ⬜ | | |
@@ -19,13 +19,22 @@
 <summary><b>基础设施</b></summary>
 
 - [x] 2026-08-11：K3s 集群搭建（k3d 3 节点：1 server + 2 agents）
-  - 交付：deploy/k3s/README.md + k3d/cluster.yaml + up/down/verify.ps1
+  - 交付：deploy/k3s/k3d/cluster.yaml + up/down/verify.ps1
   - 遇到的问题：winget 安装 k3d 后 PATH 未刷新（脚本 Get-Command 找不到）；k3d v5 配置 schema 校验失败（servers/agents 应为整数而非数组）
   - 解决方案：脚本增加 Find-K3d 自动定位（搜索 winget Links/Packages 目录并加入会话 PATH）；修正 cluster.yaml 为 servers: 1 / agents: 2
   - 健壮性：up.ps1 幂等（集群已存在跳过创建）+ 自动合并 kubeconfig
   - 结果：集群 artifact-scanning 创建成功，3 节点 Ready；Traefik Ingress 就绪；local-path StorageClass（default）可用；metrics-server 正常
   - 环境：k3d 5.9.0 + kubectl 1.36.1 + Docker Desktop 29.6.2（纯 CPU）
   - 端口映射：宿主机 8080→集群 80（HTTP Ingress），8443→443（HTTPS Ingress）
+
+- [x] 2026-08-11：Harbor 私有镜像仓库部署
+  - 交付：deploy/harbor/values.yaml + install/verify/init.ps1
+  - 环境：helm 4.2.3（winget 安装，脚本自动定位 PATH）
+  - 遇到的问题：k3d 默认不暴露 NodePort（仅 80/443），需在 cluster.yaml 显式映射；映射整个 30000-32767 范围导致 serverlb/traefik 配置爆炸无法启动（bufio.Scanner: token too long）→ 改为只映射 30002；kubectl 默认指向 docker-desktop(kind) 集群 → 脚本自动 use-context k3d-artifact-scanning
+  - 结果：Harbor 2.15.2 部署成功，8 组件 Running（core/database/jobservice/nginx/portal/redis/registry/trivy）；门户 http://localhost:30002 可达（HTTP 200）；docker admin 与机器人账号登录/推送/拉回闭环验证通过；项目 artifact(public) + 机器人 robot$artifact+cicd 创建（凭据存 .harbor-credentials.json，敏感勿提交）
+  - 说明：127.0.0.0/8 默认被 Docker 视为 insecure，本机访问无需改 daemon.json
+  - 集成验证：imagePullSecret（机器人账号）+ 测试 Deployment（镜像 host.k3d.internal:30002/artifact/busybox:test）成功 Running，集群可从 Harbor 正常拉取并运行镜像（验证用脚本/清单已移除，registries.yaml 保留为基础设施配置）
+  - 踩坑：k3d 节点无法访问 ClusterIP（kube-proxy 不 DNAT 节点本机发起的 Service 流量，containerd 拉镜像报 EOF）→ registries.yaml 与镜像地址改用 host.k3d.internal:30002（经 serverlb 转发到 Harbor）
 </details>
 
 ---

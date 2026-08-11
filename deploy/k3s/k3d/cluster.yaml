@@ -4,10 +4,21 @@ metadata:
   name: artifact-scanning
 servers: 1
 agents: 2
+# 将 containerd 镜像仓库配置（registries.yaml）挂载到所有节点，
+# 使集群能从 HTTP 的 Harbor 拉取镜像
+volumes:
+  - volume: C:/Users/zyb/source/repos/artifact-scanning-system/deploy/k3s/registries.yaml:/etc/rancher/k3s/registries.yaml
+    nodeFilters:
+      - server:*
+      - agent:*
 ports:
   - port: 8080:80
     nodeFilters:
       - loadbalancer
   - port: 8443:443
+    nodeFilters:
+      - loadbalancer
+  # 显式暴露 Harbor 的 NodePort
+  - port: 30002:30002
     nodeFilters:
       - loadbalancer
