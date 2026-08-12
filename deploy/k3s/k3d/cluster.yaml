@@ -11,6 +11,18 @@ volumes:
     nodeFilters:
       - server:*
       - agent:*
+  # 持久化数据卷：把每个节点的 local-path 数据目录（PVC 实际存储位置）
+  # 挂载到工作区 cluster-data/ 下，使集群 down/up 或迁移工作区后数据不丢失。
+  # 每个节点使用独立子目录，避免多节点写同一目录产生冲突。
+  - volume: C:/Users/zyb/source/repos/artifact-scanning-system/cluster-data/server-0:/var/lib/rancher/k3s/storage
+    nodeFilters:
+      - server:0
+  - volume: C:/Users/zyb/source/repos/artifact-scanning-system/cluster-data/agent-0:/var/lib/rancher/k3s/storage
+    nodeFilters:
+      - agent:0
+  - volume: C:/Users/zyb/source/repos/artifact-scanning-system/cluster-data/agent-1:/var/lib/rancher/k3s/storage
+    nodeFilters:
+      - agent:1
 ports:
   - port: 8080:80
     nodeFilters:

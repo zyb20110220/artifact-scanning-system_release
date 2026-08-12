@@ -1,0 +1,19 @@
+# docs/ —— 项目文档索引
+
+> 本项目所有 Markdown 文档统一存放于此目录，避免散落。README.md / PROGRESS.md
+> 为项目入口与进度跟踪，保留在仓库根目录（GitHub 首页展示需要）。
+
+## 文档列表
+
+| 文档 | 内容 |
+|------|------|
+| [README.md](../README.md) | 项目总览、系统架构、技术栈、路线图（仓库根） |
+| [PROGRESS.md](../PROGRESS.md) | 分阶段进度跟踪与日志（仓库根） |
+| [reproducibility.md](reproducibility.md) | 可复现性指南：备份 / 恢复 / 新机器迁移 |
+| [cluster-data.md](cluster-data.md) | cluster-data 目录说明（集群持久化数据挂载） |
+| [harbor-offline.md](harbor-offline.md) | Harbor 离线镜像库（offline/）说明 |
+
+## 约定
+
+- 各目录下不再放置 Markdown 说明文件，统一链接回 docs/。
+- 内容避免重复：命令速查 / 完整流程等只保留在单一文档中。
