@@ -1,0 +1,207 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ------------------------------------------------------------
+      # Step 1 — PowerShell 脚本语法校验
+      # ------------------------------------------------------------
+      - name: Validate PowerShell script syntax
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $files = @(Get-ChildItem deploy -Recurse -Filter *.ps1 -File)
+          if ($files.Count -eq 0) {
+            Write-Host "::notice::未找到 PowerShell 脚本"
+            exit 0
+          }
+          $fail = @()
+          foreach ($f in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $f.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $fail += "$($f.FullName): $($errors[0].Message)"
+            }
+          }
+          if ($fail.Count -gt 0) {
+            Write-Host "::error::PowerShell 语法错误："
+            foreach ($line in $fail) { Write-Host "::error::$line" }
+            exit 1
+          }
+          Write-Host "::notice::PowerShell 脚本语法 OK（$($files.Count) 个）"
+
+      # ------------------------------------------------------------
+      # Step 2 — 文档链接完整性校验
+      # ------------------------------------------------------------
+      - name: Validate docs links
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $mdFiles = @(Get-ChildItem -Recurse -Filter *.md -File |
+            Where-Object { $_.FullName -notmatch "\\\.git\\" })
+          $fail = @()
+          foreach ($f in $mdFiles) {
+            $dir = Split-Path $f.FullName -Parent
+            $content = Get-Content $f.FullName -Raw
+            foreach ($m in [regex]::Matches($content, "\]\(([^)]+)\)")) {
+              $target = $m.Groups[1].Value
+              if ($target -match "^https?://" -or $target -match "^#" -or $target -match "^mailto:") { continue }
+              $path = ($target -split "#")[0]
+              if ($path -eq "") { continue }
+              $resolved = Join-Path $dir $path
+              if (-not (Test-Path $resolved)) {
+                $fail += "$($f.Name): 链接 '$target' -> 目标不存在"
+              }
+            }
+          }
+          if ($fail.Count -gt 0) {
+            foreach ($line in $fail) { Write-Host "::error::$line" }
+            exit 1
+          }
+          Write-Host "::notice::文档链接完整（$($mdFiles.Count) 个 md）"
+
+      # ------------------------------------------------------------
+      # Step 3 — Git 排除规则校验
+      # ------------------------------------------------------------
+      - name: Validate git exclude rules
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $tracked = @(git ls-files)
+          $paths = @("backup", "cluster-data", "deploy/harbor/offline")
+          $fail = @()
+          foreach ($p in $paths) {
+            $hits = @($tracked | Where-Object { $_ -like "$p/*" })
+            if ($hits.Count -gt 0) {
+              $fail += "$p 有文件被 git 跟踪：$($hits -join ', ')"
+            }
+          }
+          if ($fail.Count -gt 0) {
+            foreach ($line in $fail) { Write-Host "::error::$line" }
+            exit 1
+          }
+          Write-Host "::notice::排除规则正确（backup/cluster-data/offline 未入库）"
+
+      # ------------------------------------------------------------
+      # Step 4 — YAML 配置可解析
+      # ------------------------------------------------------------
+      - name: Validate YAML configs
+        shell: bash
+        run: |
+          python3 -m pip install --quiet pyyaml 2>/dev/null || true
+          python3 - <<'EOF'
+          import yaml, sys
+          files = ["deploy/k3s/k3d/cluster.yaml", "deploy/harbor/values.yaml"]
+          ok = True
+          for f in files:
+              try:
+                  with open(f, encoding="utf-8") as fh:
+                      yaml.safe_load(fh)
+                  print(f"OK {f}")
+              except Exception as e:
+                  print(f"ERROR {f}: {e}")
+                  ok = False
+          sys.exit(0 if ok else 1)
+          EOF
+
+      # ------------------------------------------------------------
+      # Step 5 — 公共库冒烟测试（A1：脚本行为自检）
+      # ------------------------------------------------------------
+      - name: Smoke-test common library
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          # 加载公共库并验证关键函数可用（Find-Tool / Require-Tool / Ensure-Context / RepoRoot）
+          . ./deploy/lib/common.ps1
+          $checks = @(
+            @{ n = "RepoRoot 定位"; ok = (Test-Path $RepoRoot) -and (Split-Path $RepoRoot -Leaf) -eq "artifact-scanning-system" }
+            @{ n = "Find-Tool 存在"; ok = (Get-Command Find-Tool -ErrorAction SilentlyContinue) -ne $null }
+            @{ n = "Require-Tool 存在"; ok = (Get-Command Require-Tool -ErrorAction SilentlyContinue) -ne $null }
+            @{ n = "Ensure-Context 存在"; ok = (Get-Command Ensure-Context -ErrorAction SilentlyContinue) -ne $null }
+            @{ n = "Find-Tool 可调用（找不到时返回 null 不报错）"; ok = $null -eq (Find-Tool "__definitely_not_installed_xyz__") }
+          )
+          $fail = @()
+          foreach ($c in $checks) {
+            if ($c.ok) {
+              Write-Host "::notice::[OK] $($c.n)"
+            } else {
+              Write-Host "::error::[FAIL] $($c.n)"
+              $fail += $c.n
+            }
+          }
+          if ($fail.Count -gt 0) { exit 1 }
+          Write-Host "::notice::公共库冒烟测试通过（$($checks.Count) 项）"
+
+      # ------------------------------------------------------------
+      # Step 6 — 离线镜像清单一致性校验（A2）
+      # ------------------------------------------------------------
+      - name: Validate offline image list consistency
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          # 从 import-images.ps1 提取 $needTags 中的镜像名（如 harbor-core:v2.15.2）
+          $script = Get-Content ./deploy/harbor/import-images.ps1 -Raw
+          $m = [regex]::Match($script, '\$needTags\s*=\s*@\(([\s\S]*?)\)')
+          if (-not $m.Success) {
+            Write-Host "::error::无法从 import-images.ps1 解析 \$needTags"
+            exit 1
+          }
+          $scriptTags = [regex]::Matches($m.Groups[1].Value, '"([^"]+)"') |
+            ForEach-Object { $_.Groups[1].Value }
+
+          # 从 docs/harbor-offline.md 提取文档声明的镜像（9 个组件）
+          $doc = Get-Content ./docs/harbor-offline.md -Raw
+          $docCount = [regex]::Match($doc, '全部\s*(\d+)\s*个组件镜像')
+          if (-not $docCount.Success) {
+            Write-Host "::error::无法从 docs/harbor-offline.md 解析镜像数量"
+            exit 1
+          }
+          $docNum = [int]$docCount.Groups[1].Value
+
+          $fail = @()
+          if ($scriptTags.Count -ne $docNum) {
+            $fail += "数量不一致：import-images.ps1 有 $($scriptTags.Count) 个，docs 声明 $docNum 个"
+          }
+          if ($scriptTags.Count -ne 9) {
+            $fail += "镜像数量异常：应为 9 个，实际 $($scriptTags.Count) 个"
+          }
+          # 校验镜像名唯一
+          $dup = $scriptTags | Group-Object | Where-Object { $_.Count -gt 1 }
+          if ($dup) { $fail += "镜像名重复：$($dup.Name -join ', ')" }
+
+          if ($fail.Count -gt 0) {
+            foreach ($line in $fail) { Write-Host "::error::$line" }
+            exit 1
+          }
+          Write-Host "::notice::离线镜像清单一致（$($scriptTags.Count) 个）：$($scriptTags -join ', ')"
+
+      # ------------------------------------------------------------
+      # Step 7 — Workflow 自身校验（A5：actionlint）
+      # ------------------------------------------------------------
+      - name: Lint GitHub Actions workflows
+        shell: bash
+        run: |
+          # 固定版本 v1.7.12 下载 Linux amd64 二进制（锁定版本，避免未来变动破坏 CI）
+          curl -sSL -o /tmp/actionlint.tar.gz \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          chmod +x /tmp/actionlint
+          # 校验所有 workflow 文件（任一有误则退出非零）
+          find .github/workflows -name "*.yml" -o -name "*.yaml" | while read -r f; do
+            /tmp/actionlint -color "$f"
+          done
