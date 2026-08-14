@@ -128,7 +128,7 @@ jobs:
           # 加载公共库并验证关键函数可用（Find-Tool / Require-Tool / Ensure-Context / RepoRoot）
           . ./deploy/lib/common.ps1
           $checks = @(
-            @{ n = "RepoRoot 定位"; ok = (Test-Path $RepoRoot) -and (Split-Path $RepoRoot -Leaf) -eq "artifact-scanning-system" }
+            @{ n = "RepoRoot 定位"; ok = (Test-Path (Join-Path $RepoRoot "deploy\lib\common.ps1")) }
             @{ n = "Find-Tool 存在"; ok = (Get-Command Find-Tool -ErrorAction SilentlyContinue) -ne $null }
             @{ n = "Require-Tool 存在"; ok = (Get-Command Require-Tool -ErrorAction SilentlyContinue) -ne $null }
             @{ n = "Ensure-Context 存在"; ok = (Get-Command Ensure-Context -ErrorAction SilentlyContinue) -ne $null }
