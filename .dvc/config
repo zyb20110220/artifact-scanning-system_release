@@ -1,0 +1,5 @@
+['remote "minio"']
+    url = s3://artifacts/dvc
+    endpointurl = http://127.0.0.1:9000
+    access_key_id = artifactadmin
+    secret_access_key = minioart2026

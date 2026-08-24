@@ -19,6 +19,7 @@
 | [data-cleaning.md](data-cleaning.md) | 数据清洗管道（阶段 1.2：去重 / 质量过滤 / 标准化 / pHash） |
 | [data-annotation.md](data-annotation.md) | 标注体系（阶段 1.3：5 级标签 + Wikidata 补全） |
 | [data-storage.md](data-storage.md) | 数据存储层（阶段 1.4：MinIO 对象存储 + PostgreSQL 元数据库） |
+| [dvc-data.md](dvc-data.md) | 数据版本管理（阶段 1.5：DVC + MinIO 后端） |
 
 ## 约定
 

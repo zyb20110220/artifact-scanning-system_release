@@ -76,7 +76,7 @@
 | 1.2 | 数据清洗管道（去重 + 质量过滤 + 格式标准化） | ✅ | 2026-08-24 | 文本去重（title\|artist\|date）+ pHash 图片去重；质量过滤 + 标准化 |
 | 1.3 | 标注体系实现（5 级标签 + Wikidata 补全） | ✅ | 2026-08-24 | 时期/文化/材质/器型/纹饰规则引擎 + Wikidata 补全缺失文化 |
 | 1.4 | MinIO 存储 + PostgreSQL 元数据库 | ✅ | 2026-08-24 | data 命名空间；MinIO(9000/9001) + PostgreSQL(5432) ClusterIP，local-path 持久化 |
-| 1.5 | 数据版本管理（DVC + MinIO 后端） | ⬜ | | |
+| 1.5 | 数据版本管理（DVC + MinIO 后端） | ✅ | 2026-08-24 | dvc push/pull 验证通过；.dvc 指针入库、数据存 MinIO |
 | 1.6 | 数据质量 Dashboard（Grafana） | ⬜ | | |
 
 ### 进度日志
@@ -117,6 +117,12 @@
   - MinIO：minio chart（standalone），API 9000 / Console 9001，local-path 10Gi；验证 bucket artifacts 创建 + put/get 对象成功（boto3）
   - 遇到问题：MinIO chart 默认 memory request 16Gi 无法调度（8GB/节点）→ values 调小 512Mi；bitnami 自定义用户密码未设时 chart 自动生成（values 补 auth.password）
   - 凭据：开发环境固定（postgres/artifactpg2026、minio/artifactadmin+minioart2026）；生产建议 existingSecret
+
+- [x] 2026-08-24：数据版本管理（阶段 1.5）
+  - 交付：docs/dvc-data.md；.dvc/ 配置（minio 远程 S3）+ .dvcignore + data/{raw,clean,annotated}.dvc 指针
+  - 验证：dvc push 15 文件到 MinIO（artifacts/dvc）；模拟新 clone 后 dvc pull 完整恢复 261 条（含 5 源 raw + clean + annotated）；dvc status 一致
+  - 调整：data/ 从 .git/info/exclude 移除，改由 DVC 的 .gitignore 管理（数据不入库、.dvc 指针入库）
+  - 依赖：dvc[s3]（本机 Python 3.14）
 
 - [ ] 待开始
 </details>
