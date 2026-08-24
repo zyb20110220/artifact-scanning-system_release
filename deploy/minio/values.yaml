@@ -1,0 +1,43 @@
+# ============================================================
+# values.yaml —— minio/minio 配置（阶段 1.4 对象存储）
+# 部署：deploy/minio/install.ps1
+# ============================================================
+
+# MinIO 服务端镜像
+image:
+  repository: quay.io/minio/minio
+  tag: RELEASE.2024-12-18T13-15-44Z
+# MinIO 客户端镜像（初始化 job 用）
+mcImage:
+  repository: quay.io/minio/mc
+  tag: RELEASE.2024-11-21T17-21-54Z
+
+# 单机模式（开发环境；生产可改 distributed）
+mode: standalone
+replicas: 1
+
+# 资源：chart 默认 memory request 16Gi 过大（本集群 8GB/节点），调小
+resources:
+  requests:
+    memory: 512Mi
+    cpu: 250m
+  limits:
+    memory: 2Gi
+
+# 根凭据（开发环境固定；生产建议用 secret）
+rootUser: "artifactadmin"
+rootPassword: "minioart2026"
+
+# 数据持久化到 local-path（随 cluster-data 挂载）
+persistence:
+  enabled: true
+  storageClass: "local-path"
+  size: 10Gi
+
+# 服务：API 9000 / Console 9001（ClusterIP，验证用 port-forward）
+service:
+  type: ClusterIP
+  port: 9000
+consoleService:
+  type: ClusterIP
+  port: 9001

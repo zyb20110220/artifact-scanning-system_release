@@ -75,7 +75,7 @@
 | 1.1 | 多源采集器（MET → Harvard → Cleveland → Smithsonian → Rijksmuseum） | ✅ | 2026-08-24 | 采集器基类 + MET；断点续传 + 指数退避 + 限流；输出统一 schema；数据不入 git |
 | 1.2 | 数据清洗管道（去重 + 质量过滤 + 格式标准化） | ✅ | 2026-08-24 | 文本去重（title\|artist\|date）+ pHash 图片去重；质量过滤 + 标准化 |
 | 1.3 | 标注体系实现（5 级标签 + Wikidata 补全） | ✅ | 2026-08-24 | 时期/文化/材质/器型/纹饰规则引擎 + Wikidata 补全缺失文化 |
-| 1.4 | MinIO 存储 + PostgreSQL 元数据库 | ⬜ | | |
+| 1.4 | MinIO 存储 + PostgreSQL 元数据库 | ✅ | 2026-08-24 | data 命名空间；MinIO(9000/9001) + PostgreSQL(5432) ClusterIP，local-path 持久化 |
 | 1.5 | 数据版本管理（DVC + MinIO 后端） | ⬜ | | |
 | 1.6 | 数据质量 Dashboard（Grafana） | ⬜ | | |
 
@@ -110,6 +110,13 @@
   - 功能：5 级标签规则引擎（period 由 date 年份推断 / culture 标准化中文 / materials 从 medium / forms 从 title / decorations 从 title+description）；Wikidata 补全缺失文化（wbsearchentities，需自定义 User-Agent 否则 403）
   - 验证：128 条清洗数据标注；period/culture/forms/decorations 正确（如 c.1765→近代早期、Portrait→肖像画）；Wikidata 补全 17 条缺失中的 7 条（Rijksmuseum→荷兰、Chelsea→英国等）
   - 输出：data/annotated/records.ndjson（不入 git）
+
+- [x] 2026-08-24：MinIO 存储 + PostgreSQL 元数据库（阶段 1.4）
+  - 交付：deploy/postgres/{values,import-images,install}.ps1 + deploy/minio/{同} + docs/data-storage.md
+  - PostgreSQL：bitnami chart（18.6.0），库 artifactdb / 用户 artifact，local-path 10Gi；验证建表/插入成功
+  - MinIO：minio chart（standalone），API 9000 / Console 9001，local-path 10Gi；验证 bucket artifacts 创建 + put/get 对象成功（boto3）
+  - 遇到问题：MinIO chart 默认 memory request 16Gi 无法调度（8GB/节点）→ values 调小 512Mi；bitnami 自定义用户密码未设时 chart 自动生成（values 补 auth.password）
+  - 凭据：开发环境固定（postgres/artifactpg2026、minio/artifactadmin+minioart2026）；生产建议 existingSecret
 
 - [ ] 待开始
 </details>
