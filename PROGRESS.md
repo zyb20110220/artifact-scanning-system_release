@@ -72,7 +72,7 @@
 
 | # | 任务 | 状态 | 完成日期 | 备注 |
 |---|------|------|---------|------|
-| 1.1 | 多源采集器（MET → Harvard → Cleveland → Smithsonian → Rijksmuseum） | ⬜ | | 断点续传 + 指数退避 + 限流控制 |
+| 1.1 | 多源采集器（MET → Harvard → Cleveland → Smithsonian → Rijksmuseum） | ✅ | 2026-08-24 | 采集器基类 + MET；断点续传 + 指数退避 + 限流；输出统一 schema；数据不入 git |
 | 1.2 | 数据清洗管道（去重 + 质量过滤 + 格式标准化） | ⬜ | | pHash + 特征相似度去重 |
 | 1.3 | 标注体系实现（5 级标签 + Wikidata 补全） | ⬜ | | 时期/文化/材质/器型/纹饰 |
 | 1.4 | MinIO 存储 + PostgreSQL 元数据库 | ⬜ | | |
@@ -83,6 +83,14 @@
 
 <details>
 <summary><b>数据引擎</b></summary>
+
+- [x] 2026-08-24：多源采集器基类 + MET 采集器（阶段 1.1）
+  - 交付：pyproject.toml；src/artifact_scan/collector/{base,met,cli}.py；docs/data-collector.md
+  - 功能：断点续传（.checkpoint.json，重启跳过已采）/ 指数退避（429/5xx）/ 限流（每请求间隔）/ 统一字段映射（title/artist/culture/period/date/medium/image_url 等）
+  - 环境：Python 3.14（本机）+ requests 2.34.2；经代理 127.0.0.1:7897 访问 MET API
+  - 验证：采集 5 条（query=chinese，11296 命中）→ 断点续传再采 3 条（跳过已采 5 条）→ 输出 records.ndjson 字段正确（如 Archer's Ring 清 扳指，culture=Chinese）
+  - 数据管理：data/ 不入 git（.git/info/exclude），后续 DVC 管理（阶段 1.5）
+  - 待扩展：Harvard / Cleveland / Smithsonian / Rijksmuseum 采集器（复用 BaseCollector）
 
 - [ ] 待开始
 </details>

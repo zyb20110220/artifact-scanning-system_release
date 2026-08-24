@@ -1,0 +1,25 @@
+# ============================================================
+# pyproject.toml —— artifact-scanning-system 数据模块
+# 阶段 1：数据引擎（采集 / 清洗 / 标注 / 存储）
+# 依赖管理：PEP 621（兼容 pip / Poetry）
+# ============================================================
+[project]
+name = "artifact-scanning-system"
+version = "0.1.0"
+description = "考古文物断代与鉴定系统 —— 数据采集 / 处理模块"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
