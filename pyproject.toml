@@ -10,6 +10,8 @@ description = "考古文物断代与鉴定系统 —— 数据采集 / 处理模
 requires-python = ">=3.10"
 dependencies = [
     "requests>=2.31",
+    "pillow>=10.0",   # 图片处理（pHash 去重）
+    "imagehash>=4.3", # 感知哈希（图片相似去重）
 ]
 
 [project.optional-dependencies]

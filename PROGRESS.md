@@ -73,7 +73,7 @@
 | # | 任务 | 状态 | 完成日期 | 备注 |
 |---|------|------|---------|------|
 | 1.1 | 多源采集器（MET → Harvard → Cleveland → Smithsonian → Rijksmuseum） | ✅ | 2026-08-24 | 采集器基类 + MET；断点续传 + 指数退避 + 限流；输出统一 schema；数据不入 git |
-| 1.2 | 数据清洗管道（去重 + 质量过滤 + 格式标准化） | ⬜ | | pHash + 特征相似度去重 |
+| 1.2 | 数据清洗管道（去重 + 质量过滤 + 格式标准化） | ✅ | 2026-08-24 | 文本去重（title\|artist\|date）+ pHash 图片去重；质量过滤 + 标准化 |
 | 1.3 | 标注体系实现（5 级标签 + Wikidata 补全） | ⬜ | | 时期/文化/材质/器型/纹饰 |
 | 1.4 | MinIO 存储 + PostgreSQL 元数据库 | ⬜ | | |
 | 1.5 | 数据版本管理（DVC + MinIO 后端） | ⬜ | | |
@@ -97,6 +97,13 @@
     - Harvard / Smithsonian 用用户提供的 key 实测通过（各 5 条，字段正确）
     - 修复：Smithsonian start 为 0-based（start=1 报 400）；Met/Smithsonian 的 query 被 base.__init__ 的 query=None 默认值覆盖（改 super() 后再设）；Smithsonian 字段路径（title 在顶层、date/object_type 在 indexedStructured）
     - MET ids 模式回归正常（断点续传累计 13 条）
+
+- [x] 2026-08-24：数据清洗管道（阶段 1.2）
+  - 交付：src/artifact_scan/cleaner/{pipeline,quality,normalize,dedup,cli}.py + docs/data-cleaning.md；pyproject 加 pillow/imagehash
+  - 流程：读取 data/raw/*/records.ndjson → 质量过滤（必须 id+title）→ 格式标准化（culture 去 {}、id 转字符串、去空白）→ 文本去重（规范化 title|artist|date）→ 可选 pHash 图片去重（Hamming ≤ 阈值）
+  - 验证：133 条原始 → 过滤 1（无 title）→ 文本去重 4 → 128 条；pHash 比对 94 张图（测试集图片各异，无重复命中）
+  - 输出：data/clean/records.ndjson（不入 git）
+  - 待扩展：特征相似度去重（阶段 2 特征工程后），pHash 缓存避免重复下载
 
 - [ ] 待开始
 </details>
