@@ -14,6 +14,7 @@
 | [harbor-offline.md](harbor-offline.md) | Harbor 离线镜像库（offline/）说明 |
 | [monitoring.md](monitoring.md) | 监控栈（Prometheus + Grafana）部署与使用说明 |
 | [dev-guidelines.md](dev-guidelines.md) | 开发规范：代码风格 / 提交规范 / 代码审查 / 质量门禁 |
+| [hello-world.md](hello-world.md) | hello-world 验证应用（构建 → Harbor → Helm 部署） |
 
 ## 约定
 

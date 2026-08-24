@@ -1,0 +1,21 @@
+# ============================================================
+# values.yaml —— hello-world 配置（阶段 0.6）
+# 镜像从 Harbor 拉取（host.k3d.internal:30002 经 registries.yaml）
+# ============================================================
+
+# 副本数
+replicaCount: 1
+
+image:
+  # 集群内从 Harbor 拉取的镜像地址
+  repository: host.k3d.internal:30002/artifact/hello-world
+  tag: latest
+  pullPolicy: Always
+
+# 从 Harbor 拉取所需的认证（部署脚本创建，见 deploy/hello-world/install.ps1）
+imagePullSecrets:
+  - name: harbor-registry
+
+service:
+  type: ClusterIP
+  port: 80

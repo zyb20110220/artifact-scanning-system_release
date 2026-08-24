@@ -11,6 +11,7 @@
 | 0.3 | GitHub Actions CI/CD（构建 → 推镜像 → 部署） | ✅ | 2026-08-13 | 云端 8 步校验（PowerShell 语法 / 文档链接 / git 排除 / YAML / 公共库冒烟 / 离线镜像清单 / actionlint） |
 | 0.4 | Prometheus + Grafana 监控栈 | ✅ | 2026-08-24 | kube-prometheus-stack（Grafana 30003 / Prometheus 30004） |
 | 0.5 | 开发规范（代码风格 / commit message / review） | ✅ | 2026-08-24 | docs/dev-guidelines.md（脚本风格 / 提交规范 / 审查清单 / CI 门禁） |
+| 0.6 | 首个 Helm Chart 部署验证（hello-world） | ✅ | 2026-08-24 | 构建 → Harbor → Helm 部署全链路验证通过 |
 | 0.5 | 开发规范（代码风格 / commit message / review） | ⬜ | | |
 | 0.6 | 首个 Helm Chart 部署验证（hello-world） | ⬜ | | |
 
@@ -55,6 +56,12 @@
   - 交付：docs/dev-guidelines.md（可提交）；docs/contributing.md 同步引用（本地约定文档）
   - 内容：PowerShell 脚本风格（文件头 / 步骤 / 颜色 / 错误处理 / 幂等）+ YAML / 文档风格；提交规范（纯标题格式）；代码审查流程与检查清单；CI 8 步质量门禁
   - 说明：风格约定提炼自现有 8 个 deploy 脚本 + 历史提交，固化为一处权威规范
+
+- [x] 2026-08-24：首个 Helm Chart 部署验证（hello-world）
+  - 交付：apps/hello-world/（Dockerfile + index.html）；deploy/charts/hello-world/（Chart）；deploy/hello-world/{publish,install}.ps1；docs/hello-world.md
+  - 验证链路：publish.ps1 构建（nginx:alpine）→ 推 Harbor（artifact/hello-world:latest）→ install.ps1 创建 imagePullSecret（robot 凭据）→ Helm 安装 → 集群从 host.k3d.internal:30002 拉取 → pod Running → port-forward + curl 返回 HTTP 200
+  - 结果：Deployment 1/1 Running；Service ClusterIP；镜像来源 host.k3d.internal:30002/artifact/hello-world:latest
+  - 意义：打通 构建 → Harbor → 集群拉取 → Helm 部署 → 服务访问 全链路，为后续真实应用奠定模板
 </details>
 
 ---
