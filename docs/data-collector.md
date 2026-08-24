@@ -6,8 +6,12 @@
 
 ```
 src/artifact_scan/collector/
-├── base.py     # 采集器基类：限流 / 指数退避 / 断点续传 / 统一字段映射
-├── met.py      # MET 大都会博物馆采集器
+├── base.py     # 采集器基类：限流 / 指数退避 / 断点续传 / 分页 / 统一字段映射
+├── met.py      # MET 大都会博物馆采集器（ids 模式）
+├── harvard.py      # Harvard Art Museums 采集器（pages 模式，需 key）
+├── cleveland.py    # Cleveland Museum of Art 采集器（pages 模式，免 key）
+├── smithsonian.py  # Smithsonian Open Access 采集器（pages 模式，需 key）
+├── rijksmuseum.py  # Rijksmuseum 采集器（pages 模式，需 key）
 ├── cli.py      # 命令行入口
 └── __init__.py
 pyproject.toml  # 依赖（requests），Python >= 3.10
@@ -15,13 +19,16 @@ pyproject.toml  # 依赖（requests），Python >= 3.10
 
 ## 支持的数据源
 
-| 数据源 | 采集器 | 状态 |
-|--------|--------|------|
-| MET（大都会） | `met.py` | ✅ 已实现 |
-| Harvard | — | ⬜ 待实现 |
-| Cleveland | — | ⬜ 待实现 |
-| Smithsonian | — | ⬜ 待实现 |
-| Rijksmuseum | — | ⬜ 待实现 |
+| 数据源 | 采集器 | 模式 | API key | 状态 |
+|--------|--------|------|---------|------|
+| MET（大都会） | `met.py` | ids（搜索→逐条详情） | 否 | ✅ |
+| Cleveland | `cleveland.py` | pages（skip/limit） | 否 | ✅ |
+| Harvard | `harvard.py` | pages（page/size） | 需申请 | ✅ |
+| Smithsonian | `smithsonian.py` | pages（start/rows） | 需申请 | ✅ |
+| Rijksmuseum | `rijksmuseum.py` | pages（p/ps） | 需申请 | ✅ |
+
+> 需要 API key 的来源：`harvard` / `smithsonian` / `rijksmuseum`，用 `--api-key` 传入
+> 或设环境变量 `ARTIFACT_API_KEY`。无 key 时采集器会提示申请地址并跳过（不报错）。
 
 ## 运行
 
@@ -42,13 +49,16 @@ python -m artifact_scan.collector.cli --source met --query chinese `
 
 | 参数 | 说明 |
 |------|------|
-| `--source` | 数据源（met / harvard / ...） |
-| `--query` | 关键词搜索（MET 用） |
+| `--source` | 数据源（met / harvard / cleveland / smithsonian / rijksmuseum） |
+| `--query` | 关键词搜索（MET / Smithsonian 用） |
 | `--out` | 输出目录（默认 `data/raw`，各来源子目录） |
 | `--limit` | 最多采集条数（None=全部） |
 | `--proxy` | HTTP 代理（如 `http://127.0.0.1:7897`） |
+| `--api-key` | API key（harvard/smithsonian/rijksmuseum 需要；缺省读 `ARTIFACT_API_KEY`） |
 | `--no-resume` | 禁用断点续传（默认启用） |
 | `--verbose` | 调试日志 |
+
+> API key 为敏感信息，不写入仓库；用 `--api-key` 或环境变量 `ARTIFACT_API_KEY` 传入。
 
 ## 输出与断点续传
 

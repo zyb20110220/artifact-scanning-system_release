@@ -36,12 +36,15 @@ class BaseCollector:
     max_retries = 5       # 指数退避最大重试次数
     timeout = 30          # HTTP 超时（秒）
     checkpoints_every = 50  # 每采 N 条保存一次断点
+    mode = "ids"          # 采集模式："ids"（先取 id 再逐条详情）/"pages"（分页直接取记录）
 
-    def __init__(self, out_dir, proxy=None, limit=None, resume=True):
+    def __init__(self, out_dir, proxy=None, limit=None, resume=True, api_key=None, query=None):
         self.out_dir = out_dir
         self.proxy = proxy
         self.limit = limit            # 最多采集多少条（None=全部）
         self.resume = resume          # 是否启用断点续传
+        self.api_key = api_key        # 部分 API 需要 key
+        self.query = query            # 关键词（部分来源使用）
         self.done_ids = set()
         self.records_file = os.path.join(out_dir, self.source, "records.ndjson")
         self.checkpoint_file = os.path.join(out_dir, self.source, ".checkpoint.json")
@@ -102,51 +105,88 @@ class BaseCollector:
         logger.info("%s 断点已保存：共 %s 条", self.source, len(self.done_ids))
 
     # ------------------------------------------------------------
-    # 主采集流程
+    # 主采集流程（按 mode 分发：ids / pages）
     # ------------------------------------------------------------
     def collect(self):
-        """获取 id 列表 → 逐个拉取并映射 → 落盘 ndjson + 断点。"""
-        ids = self.get_ids()
-        if self.limit:
-            ids = ids[: self.limit]
-
+        """获取记录 → 落盘 ndjson + 断点。"""
         os.makedirs(os.path.dirname(self.records_file), exist_ok=True)
         written = 0
         with open(self.records_file, "a", encoding="utf-8") as fh:
-            for rid in ids:
-                if rid in self.done_ids:
-                    continue
-                raw = self.fetch_by_id(rid)
-                if raw is None:
-                    continue
-                record = self.map_record(rid, raw)
-                if record is None:
-                    continue
-                fh.write(json.dumps(record, ensure_ascii=False) + "\n")
-                self.done_ids.add(rid)
-                written += 1
-                if written % self.checkpoints_every == 0:
-                    fh.flush()
-                    self._save_checkpoint()
-                    logger.info("%s 进度：已采 %s / %s 条",
-                                self.source, len(self.done_ids), len(ids))
+            if self.mode == "pages":
+                written = self._collect_pages(fh)
+            else:
+                written = self._collect_ids(fh)
         self._save_checkpoint()
         logger.info("%s 采集完成：本次新增 %s 条（累计 %s 条）。",
                     self.source, written, len(self.done_ids))
+
+    def _collect_ids(self, fh):
+        """模式 A（ids）：先取 id 列表，再逐条拉详情。"""
+        ids = self.get_ids()
+        if self.limit:
+            ids = ids[: self.limit]
+        written = 0
+        for rid in ids:
+            if rid in self.done_ids:
+                continue
+            raw = self.fetch_by_id(rid)
+            if raw is None:
+                continue
+            record = self.map_record(rid, raw)
+            if record is None:
+                continue
+            written += self._emit(record, fh)
+            if written % self.checkpoints_every == 0:
+                fh.flush()
+                self._save_checkpoint()
+        return written
+
+    def _collect_pages(self, fh):
+        """模式 B（pages）：分页拉取已映射记录，offset 递增。"""
+        offset = 0
+        written = 0
+        while True:
+            page = self.fetch_page(offset)
+            if not page:
+                break
+            for record in page:
+                if self.limit and written >= self.limit:
+                    break
+                rid = record.get("id")
+                if rid in self.done_ids:
+                    continue
+                written += self._emit(record, fh)
+                if written % self.checkpoints_every == 0:
+                    fh.flush()
+                    self._save_checkpoint()
+            offset += len(page)
+            if self.limit and written >= self.limit:
+                break
+        return written
+
+    def _emit(self, record, fh):
+        """写一条记录并标记 done，返回本次新增数（0/1）。"""
+        fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+        self.done_ids.add(record["id"])
+        return 1
 
     # ------------------------------------------------------------
     # 子类需实现
     # ------------------------------------------------------------
     def get_ids(self):
-        """返回待采集对象 id 列表。"""
+        """[ids 模式] 返回待采集对象 id 列表。"""
         raise NotImplementedError
 
     def fetch_by_id(self, rid):
-        """按 id 拉取单个对象原始字典，失败返回 None。"""
+        """[ids 模式] 按 id 拉取单个对象原始字典，失败返回 None。"""
         raise NotImplementedError
 
     def map_record(self, rid, raw):
-        """将原始字典映射为统一 schema 字典，跳过无效记录返回 None。"""
+        """[ids 模式] 将原始字典映射为统一 schema 字典，跳过无效记录返回 None。"""
+        raise NotImplementedError
+
+    def fetch_page(self, offset):
+        """[pages 模式] 返回一页已映射记录列表；无更多返回空列表。"""
         raise NotImplementedError
 
     def _new_record(self, rid, raw):

@@ -90,7 +90,10 @@
   - 环境：Python 3.14（本机）+ requests 2.34.2；经代理 127.0.0.1:7897 访问 MET API
   - 验证：采集 5 条（query=chinese，11296 命中）→ 断点续传再采 3 条（跳过已采 5 条）→ 输出 records.ndjson 字段正确（如 Archer's Ring 清 扳指，culture=Chinese）
   - 数据管理：data/ 不入 git（.git/info/exclude），后续 DVC 管理（阶段 1.5）
-  - 待扩展：Harvard / Cleveland / Smithsonian / Rijksmuseum 采集器（复用 BaseCollector）
+  - 扩展（同日）：Harvard / Cleveland / Smithsonian / Rijksmuseum 采集器，复用 BaseCollector
+    - base.py 扩展 pages 模式（分页拉取记录）+ api_key 参数；修 limit 在页内生效
+    - Cleveland 免 key 采集 100 条验证通过（culture 列表兼容）；Harvard/Smithsonian/Rijksmuseum 需 key，无 key 时优雅提示申请地址
+    - MET ids 模式回归正常（断点续传累计 13 条）
 
 - [ ] 待开始
 </details>
