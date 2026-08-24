@@ -10,6 +10,7 @@
 | 0.2 | Harbor 私有镜像仓库 | ✅ | 2026-08-11 | Helm 部署（NodePort 30002，HTTP + Trivy） |
 | 0.3 | GitHub Actions CI/CD（构建 → 推镜像 → 部署） | ✅ | 2026-08-13 | 云端 8 步校验（PowerShell 语法 / 文档链接 / git 排除 / YAML / 公共库冒烟 / 离线镜像清单 / actionlint） |
 | 0.4 | Prometheus + Grafana 监控栈 | ✅ | 2026-08-24 | kube-prometheus-stack（Grafana 30003 / Prometheus 30004） |
+| 0.5 | 开发规范（代码风格 / commit message / review） | ✅ | 2026-08-24 | docs/dev-guidelines.md（脚本风格 / 提交规范 / 审查清单 / CI 门禁） |
 | 0.5 | 开发规范（代码风格 / commit message / review） | ⬜ | | |
 | 0.6 | 首个 Helm Chart 部署验证（hello-world） | ⬜ | | |
 
@@ -49,6 +50,11 @@
     - 多镜像合并 tar 的 ctr import 报 content digest not found → 改逐镜像单独 save + 导入
     - operator 挂载 kube-prometheus-stack-admission secret 失败 → 禁用 admissionWebhooks 同时关闭 prometheusOperator.tls.enabled
   - 数据安全：重建集群前已 backup（cluster-data-backup-20260824-162941.tar.gz），Harbor admin/Zyb262502 登录与项目/镜像完整恢复验证通过
+
+- [x] 2026-08-24：开发规范制定（代码风格 / commit message / review）
+  - 交付：docs/dev-guidelines.md（可提交）；docs/contributing.md 同步引用（本地约定文档）
+  - 内容：PowerShell 脚本风格（文件头 / 步骤 / 颜色 / 错误处理 / 幂等）+ YAML / 文档风格；提交规范（纯标题格式）；代码审查流程与检查清单；CI 8 步质量门禁
+  - 说明：风格约定提炼自现有 8 个 deploy 脚本 + 历史提交，固化为一处权威规范
 </details>
 
 ---
