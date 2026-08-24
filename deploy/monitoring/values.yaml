@@ -1,0 +1,54 @@
+# ============================================================
+# values.yaml —— kube-prometheus-stack 精简配置（阶段 0.4 监控栈）
+# 用途：Prometheus + Alertmanager + Grafana + node-exporter + kube-state-metrics
+# 覆盖默认值：NodePort 暴露、禁用 admission webhook（少镜像少复杂度）、持久化
+# 部署：deploy/monitoring/install.ps1
+# ============================================================
+
+# ---- Prometheus Operator ----
+prometheusOperator:
+  # 禁用 admission webhook：避免额外 webhook 镜像与证书签发 job，
+  # 开发集群无需 CRD 校验，降低部署复杂度与故障点。
+  admissionWebhooks:
+    enabled: false
+  # 关闭 operator 自身 TLS（依赖 -admission secret 的证书挂载）。
+  # webhook 已禁用，无需 TLS，避免挂载不存在的 kube-prometheus-stack-admission secret。
+  tls:
+    enabled: false
+
+# ---- Prometheus（数据抓取）----
+prometheus:
+  # NodePort 暴露：宿主机访问 http://localhost:30004
+  service:
+    type: NodePort
+    nodePort: 30004
+  prometheusSpec:
+    # 数据保留 7 天（默认 5 天）
+    retention: 168h
+    # 数据持久化到 local-path（PVC 自动创建于节点 storage，随 cluster-data 挂载）
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+# ---- Alertmanager（告警）----
+alertmanager:
+  enabled: true
+
+# ---- Grafana（可视化）----
+grafana:
+  # 管理员账号：admin / prom-operator（首次登录后建议修改）
+  adminPassword: "prom-operator"
+  # NodePort 暴露：宿主机访问 http://localhost:30003
+  service:
+    type: NodePort
+    nodePort: 30003
+  # 持久化（保存 Dashboard / 用户配置）
+  persistence:
+    enabled: true
+    storageClassName: local-path
+    size: 5Gi

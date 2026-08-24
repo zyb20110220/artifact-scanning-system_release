@@ -8,8 +8,8 @@
 |---|------|------|---------|------|
 | 0.1 | K3s 集群搭建（3 节点：master + 2 worker） | ✅ | 2026-08-11 | k3d 开发集群，K3s v1.35.5 |
 | 0.2 | Harbor 私有镜像仓库 | ✅ | 2026-08-11 | Helm 部署（NodePort 30002，HTTP + Trivy） |
-| 0.3 | GitHub Actions CI/CD（构建 → 推镜像 → 部署） | ⬜ | | |
-| 0.4 | Prometheus + Grafana 监控栈 | ⬜ | | |
+| 0.3 | GitHub Actions CI/CD（构建 → 推镜像 → 部署） | ✅ | 2026-08-13 | 云端 8 步校验（PowerShell 语法 / 文档链接 / git 排除 / YAML / 公共库冒烟 / 离线镜像清单 / actionlint） |
+| 0.4 | Prometheus + Grafana 监控栈 | ✅ | 2026-08-24 | kube-prometheus-stack（Grafana 30003 / Prometheus 30004） |
 | 0.5 | 开发规范（代码风格 / commit message / review） | ⬜ | | |
 | 0.6 | 首个 Helm Chart 部署验证（hello-world） | ⬜ | | |
 
@@ -35,6 +35,20 @@
   - 说明：127.0.0.0/8 默认被 Docker 视为 insecure，本机访问无需改 daemon.json
   - 集成验证：imagePullSecret（机器人账号）+ 测试 Deployment（镜像 host.k3d.internal:30002/artifact/busybox:test）成功 Running，集群可从 Harbor 正常拉取并运行镜像（验证用脚本/清单已移除，registries.yaml 保留为基础设施配置）
   - 踩坑：k3d 节点无法访问 ClusterIP（kube-proxy 不 DNAT 节点本机发起的 Service 流量，containerd 拉镜像报 EOF）→ registries.yaml 与镜像地址改用 host.k3d.internal:30002（经 serverlb 转发到 Harbor）
+
+- [x] 2026-08-24：Prometheus + Grafana 监控栈部署（kube-prometheus-stack 88.5.4）
+  - 交付：deploy/monitoring/{values,install,import-images}.ps1 + docs/monitoring.md；cluster.yaml 新增 30003/30004 端口
+  - 组件：Prometheus v3.14.0 + Grafana v13.2.0 + Alertmanager + node-exporter（每节点）+ kube-state-metrics
+  - 访问：Grafana http://localhost:30003（admin/prom-operator）；Prometheus http://localhost:30004
+  - 验证：21 个 target 全部 up（node-exporter/kubelet/apiserver/coredns/alertmanager/grafana/kube-state-metrics/operator）；Prometheus 查询 up 返回 21 系列全 1
+  - 数据持久化：Prometheus TSDB（10Gi local-path，保留 7 天）+ Grafana（5Gi），随 cluster-data 挂载
+  - 镜像准备：7 个镜像经代理 docker pull → 逐镜像 save → 导入 3 节点；kube-state-metrics 走节点 ctr pull 直拉
+  - 遇到的问题：
+    - k3d 重建集群后 kubeconfig 指向 host.docker.internal 无法访问 → 手动改 127.0.0.1:<新API端口>
+    - Docker Desktop 的 docker save 对 registry.k8s.io 镜像导出 bug（缺层，ctr import 报 content digest not found）→ 该镜像改节点 ctr pull 直拉（节点可直连 registry.k8s.io）
+    - 多镜像合并 tar 的 ctr import 报 content digest not found → 改逐镜像单独 save + 导入
+    - operator 挂载 kube-prometheus-stack-admission secret 失败 → 禁用 admissionWebhooks 同时关闭 prometheusOperator.tls.enabled
+  - 数据安全：重建集群前已 backup（cluster-data-backup-20260824-162941.tar.gz），Harbor admin/Zyb262502 登录与项目/镜像完整恢复验证通过
 </details>
 
 ---

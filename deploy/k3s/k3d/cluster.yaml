@@ -34,3 +34,10 @@ ports:
   - port: 30002:30002
     nodeFilters:
       - loadbalancer
+  # 显式暴露监控栈 NodePort：Grafana 30003 / Prometheus 30004
+  - port: 30003:30003
+    nodeFilters:
+      - loadbalancer
+  - port: 30004:30004
+    nodeFilters:
+      - loadbalancer

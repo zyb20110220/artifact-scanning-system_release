@@ -12,6 +12,7 @@
 | [reproducibility.md](reproducibility.md) | 可复现性指南：备份 / 恢复 / 新机器迁移 |
 | [cluster-data.md](cluster-data.md) | cluster-data 目录说明（集群持久化数据挂载） |
 | [harbor-offline.md](harbor-offline.md) | Harbor 离线镜像库（offline/）说明 |
+| [monitoring.md](monitoring.md) | 监控栈（Prometheus + Grafana）部署与使用说明 |
 
 ## 约定
 
