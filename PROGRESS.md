@@ -74,7 +74,7 @@
 |---|------|------|---------|------|
 | 1.1 | 多源采集器（MET → Harvard → Cleveland → Smithsonian → Rijksmuseum） | ✅ | 2026-08-24 | 采集器基类 + MET；断点续传 + 指数退避 + 限流；输出统一 schema；数据不入 git |
 | 1.2 | 数据清洗管道（去重 + 质量过滤 + 格式标准化） | ✅ | 2026-08-24 | 文本去重（title\|artist\|date）+ pHash 图片去重；质量过滤 + 标准化 |
-| 1.3 | 标注体系实现（5 级标签 + Wikidata 补全） | ⬜ | | 时期/文化/材质/器型/纹饰 |
+| 1.3 | 标注体系实现（5 级标签 + Wikidata 补全） | ✅ | 2026-08-24 | 时期/文化/材质/器型/纹饰规则引擎 + Wikidata 补全缺失文化 |
 | 1.4 | MinIO 存储 + PostgreSQL 元数据库 | ⬜ | | |
 | 1.5 | 数据版本管理（DVC + MinIO 后端） | ⬜ | | |
 | 1.6 | 数据质量 Dashboard（Grafana） | ⬜ | | |
@@ -104,6 +104,12 @@
   - 验证：133 条原始 → 过滤 1（无 title）→ 文本去重 4 → 128 条；pHash 比对 94 张图（测试集图片各异，无重复命中）
   - 输出：data/clean/records.ndjson（不入 git）
   - 待扩展：特征相似度去重（阶段 2 特征工程后），pHash 缓存避免重复下载
+
+- [x] 2026-08-24：标注体系（阶段 1.3）
+  - 交付：src/artifact_scan/annotate/{labels,engine,wikidata,cli}.py + docs/data-annotation.md
+  - 功能：5 级标签规则引擎（period 由 date 年份推断 / culture 标准化中文 / materials 从 medium / forms 从 title / decorations 从 title+description）；Wikidata 补全缺失文化（wbsearchentities，需自定义 User-Agent 否则 403）
+  - 验证：128 条清洗数据标注；period/culture/forms/decorations 正确（如 c.1765→近代早期、Portrait→肖像画）；Wikidata 补全 17 条缺失中的 7 条（Rijksmuseum→荷兰、Chelsea→英国等）
+  - 输出：data/annotated/records.ndjson（不入 git）
 
 - [ ] 待开始
 </details>

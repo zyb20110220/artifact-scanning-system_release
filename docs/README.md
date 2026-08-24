@@ -17,6 +17,7 @@
 | [hello-world.md](hello-world.md) | hello-world 验证应用（构建 → Harbor → Helm 部署） |
 | [data-collector.md](data-collector.md) | 多源数据采集器（阶段 1.1：断点续传 / 限流 / 退避） |
 | [data-cleaning.md](data-cleaning.md) | 数据清洗管道（阶段 1.2：去重 / 质量过滤 / 标准化 / pHash） |
+| [data-annotation.md](data-annotation.md) | 标注体系（阶段 1.3：5 级标签 + Wikidata 补全） |
 
 ## 约定
 
