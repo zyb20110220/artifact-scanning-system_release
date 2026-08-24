@@ -21,8 +21,9 @@ class MetCollector(BaseCollector):
     source = "met"
 
     def __init__(self, out_dir, query="chinese", **kwargs):
-        self.query = query
+        # 先调 super（避免其 query=None 默认值覆盖），再设关键词
         super().__init__(out_dir, **kwargs)
+        self.query = query
 
     def get_ids(self):
         """按关键词搜索，返回匹配的 objectID 列表。"""

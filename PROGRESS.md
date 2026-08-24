@@ -92,7 +92,10 @@
   - 数据管理：data/ 不入 git（.git/info/exclude），后续 DVC 管理（阶段 1.5）
   - 扩展（同日）：Harvard / Cleveland / Smithsonian / Rijksmuseum 采集器，复用 BaseCollector
     - base.py 扩展 pages 模式（分页拉取记录）+ api_key 参数；修 limit 在页内生效
-    - Cleveland 免 key 采集 100 条验证通过（culture 列表兼容）；Harvard/Smithsonian/Rijksmuseum 需 key，无 key 时优雅提示申请地址
+    - Cleveland 免 key 采集 100 条验证通过（culture 列表兼容）
+    - Rijksmuseum 适配新版 Data Services（Linked Art，免 key）：Search API pageToken 惰性分页 + Resolver 详情；真实采集 5 条验证（title/artist/date/medium 正确提取）
+    - Harvard / Smithsonian 用用户提供的 key 实测通过（各 5 条，字段正确）
+    - 修复：Smithsonian start 为 0-based（start=1 报 400）；Met/Smithsonian 的 query 被 base.__init__ 的 query=None 默认值覆盖（改 super() 后再设）；Smithsonian 字段路径（title 在顶层、date/object_type 在 indexedStructured）
     - MET ids 模式回归正常（断点续传累计 13 条）
 
 - [ ] 待开始

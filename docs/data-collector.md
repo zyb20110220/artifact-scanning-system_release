@@ -25,10 +25,21 @@ pyproject.toml  # 依赖（requests），Python >= 3.10
 | Cleveland | `cleveland.py` | pages（skip/limit） | 否 | ✅ |
 | Harvard | `harvard.py` | pages（page/size） | 需申请 | ✅ |
 | Smithsonian | `smithsonian.py` | pages（start/rows） | 需申请 | ✅ |
-| Rijksmuseum | `rijksmuseum.py` | pages（p/ps） | 需申请 | ✅ |
+| Rijksmuseum | `rijksmuseum.py` | pages（pageToken + Linked Art Resolver） | 否（新版免 key） | ✅ |
 
-> 需要 API key 的来源：`harvard` / `smithsonian` / `rijksmuseum`，用 `--api-key` 传入
+> 需要 API key 的来源：`harvard` / `smithsonian`，用 `--api-key` 传入
 > 或设环境变量 `ARTIFACT_API_KEY`。无 key 时采集器会提示申请地址并跳过（不报错）。
+> Rijksmuseum 新版 Data Services（Linked Art）无需 key，已验证真实采集。
+
+## API key 申请指南
+
+| 来源 | 申请入口 | 说明 |
+|------|---------|------|
+| Harvard | https://www.harvardartmuseums.org/collections/api | 填表申请，免费 |
+| Smithsonian | https://api.data.gov/signup | 经 api.data.gov 注册，免费 |
+
+> 申请后可用 `--api-key <KEY>` 或 `$env:ARTIFACT_API_KEY` 传入进行真实采集。
+> key 为敏感信息，不写入仓库。
 
 ## 运行
 
