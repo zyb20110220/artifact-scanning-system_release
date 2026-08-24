@@ -77,7 +77,7 @@
 | 1.3 | 标注体系实现（5 级标签 + Wikidata 补全） | ✅ | 2026-08-24 | 时期/文化/材质/器型/纹饰规则引擎 + Wikidata 补全缺失文化 |
 | 1.4 | MinIO 存储 + PostgreSQL 元数据库 | ✅ | 2026-08-24 | data 命名空间；MinIO(9000/9001) + PostgreSQL(5432) ClusterIP，local-path 持久化 |
 | 1.5 | 数据版本管理（DVC + MinIO 后端） | ✅ | 2026-08-24 | dvc push/pull 验证通过；.dvc 指针入库、数据存 MinIO |
-| 1.6 | 数据质量 Dashboard（Grafana） | ⬜ | | |
+| 1.6 | 数据质量 Dashboard（Grafana） | ✅ | 2026-08-24 | Pushgateway + Prometheus + Grafana（各源数/完整率/覆盖率） |
 
 ### 进度日志
 
@@ -123,6 +123,12 @@
   - 验证：dvc push 15 文件到 MinIO（artifacts/dvc）；模拟新 clone 后 dvc pull 完整恢复 261 条（含 5 源 raw + clean + annotated）；dvc status 一致
   - 调整：data/ 从 .git/info/exclude 移除，改由 DVC 的 .gitignore 管理（数据不入库、.dvc 指针入库）
   - 依赖：dvc[s3]（本机 Python 3.14）
+
+- [x] 2026-08-24：数据质量 Dashboard（阶段 1.6）
+  - 交付：src/artifact_scan/quality/{metrics,cli}.py + deploy/pushgateway/ + docs/data-quality.md + docs/data-quality-dashboard.json
+  - 链路：quality/cli.py 计算指标（各源数/清洗去重/字段完整率/标注覆盖率）→ Pushgateway（monitoring）→ Prometheus additionalScrapeConfigs → Grafana Dashboard
+  - 验证：指标 pushgateway up + Prometheus 查询 5 源数据；Grafana 数据质量 Dashboard 展示（清洗 128 / 标注 128 / 去重 5；title·date·url 完整率 100%、medium 22.7%；period 覆盖率 89.8%）
+  - 说明：monitoring values 加 additionalScrapeConfigs（scrape pushgateway.monitoring:9091）
 
 - [ ] 待开始
 </details>

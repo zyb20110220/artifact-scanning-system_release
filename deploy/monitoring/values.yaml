@@ -25,6 +25,13 @@ prometheus:
   prometheusSpec:
     # 数据保留 7 天（默认 5 天）
     retention: 168h
+    # 额外抓取配置：Pushgateway（阶段 1.6 数据质量指标）
+    additionalScrapeConfigs:
+      - job_name: pushgateway
+        honor_labels: true
+        static_configs:
+          - targets:
+              - pushgateway.monitoring:9091
     # 数据持久化到 local-path（PVC 自动创建于节点 storage，随 cluster-data 挂载）
     storageSpec:
       volumeClaimTemplate:

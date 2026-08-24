@@ -20,6 +20,7 @@
 | [data-annotation.md](data-annotation.md) | 标注体系（阶段 1.3：5 级标签 + Wikidata 补全） |
 | [data-storage.md](data-storage.md) | 数据存储层（阶段 1.4：MinIO 对象存储 + PostgreSQL 元数据库） |
 | [dvc-data.md](dvc-data.md) | 数据版本管理（阶段 1.5：DVC + MinIO 后端） |
+| [data-quality.md](data-quality.md) | 数据质量 Dashboard（阶段 1.6：Prometheus + Grafana） |
 
 ## 约定
 
