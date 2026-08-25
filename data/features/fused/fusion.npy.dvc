@@ -1,0 +1,5 @@
+outs:
+- md5: 182717e70cc8677452285e95aa11d29a
+  size: 1514624
+  hash: md5
+  path: fusion.npy

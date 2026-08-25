@@ -48,6 +48,20 @@ python -m artifact_scan.feature.cli `
 > DINOv2-registers 模型序列含 register token（1 CLS + 4 register + 256 patch），
 > patch 特征从下标 5 起；`extract_gem` 对 patch 做 GeM 池化、`extract_patches` 返回全部 patch。
 
+## 特征融合（阶段 2.4：可学习注意力门控）
+
+`fusion.py` 提供可学习注意力门控，将多路特征（DINOv2 CLS / SigLIP pooler / registers GeM）
+融合为统一特征：
+
+```powershell
+python -m artifact_scan.feature.fusion --epochs 80
+```
+
+- `FusionGating(nn.Module)`：拼接各路特征 → MLP → softmax 门控权重 → 逐视图加权融合
+- 弱监督训练：用标注 `labels.period` 做分类辅助目标，学门控；加熵正则避免塌缩到单一视图
+- 输出：`data/features/fused/fusion.npy`（N×768，L2 归一化）、`gate_weights.npy`、`gate.pt`
+- 实测：493 样本 / 11 类 period，acc ~76%，门控权重 ≈ `[0.23, 0.00, 0.77]`（dinov2 + registers 主导）
+
 ## gRPC 特征服务
 
 服务端常驻缓存模型（按模型名懒加载），接收图像字节或 URL，返回特征向量。

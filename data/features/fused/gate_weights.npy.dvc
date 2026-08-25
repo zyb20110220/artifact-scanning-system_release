@@ -1,0 +1,5 @@
+outs:
+- md5: 3dc27819dc86ff0f773f1b2820531134
+  size: 6044
+  hash: md5
+  path: gate_weights.npy

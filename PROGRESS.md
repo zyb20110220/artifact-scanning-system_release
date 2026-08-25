@@ -144,7 +144,7 @@
 | 2.1 | DINOv2 特征提取服务（gRPC + 模型缓存） | ✅ | 2026-08-25 | 本机 CPU 跑通：特征 493×768 + L2；gRPC 服务 + 模型缓存验证；数据增强：数据补充后 684 条 |
 | 2.2 | SigLIP 特征提取服务 | ✅ | 2026-08-25 | 复用模型注册表/gRPC；特征 493×768；vision pooler |
 | 2.3 | DINOv2-registers 局部特征提取 | ✅ | 2026-08-25 | patch tokens + GeM 池化；特征 493×768 |
-| 2.4 | 特征融合模块（可学习注意力门控） | ⬜ | | |
+| 2.4 | 特征融合模块（可学习注意力门控） | ✅ | 2026-08-25 | 融合 493×768，acc~76%（period） |
 | 2.5 | 对比学习训练（SimCLR + Center Loss） | ⬜ | | 解决数据稀疏问题 |
 | 2.6 | Milvus 向量库部署与索引构建 | ⬜ | | |
 | 2.7 | 特征提取基准测试 | ⬜ | | |
@@ -180,6 +180,13 @@
   - cli/extract 扩展：--pool cls/gem/pooled + --image-dir 复用图片缓存（避免重复下载）
   - 批量提取：--model dinov2-registers-base --pool gem → data/features/registers/features.npy（493×768，norm=1.0）
   - 踩坑：extract_gem/pooled 单张返回 (1,dim) 导致 stack 三维 → extract 去单样本 batch 维
+
+- [x] 2026-08-25：特征融合模块（阶段 2.4）
+  - 交付：src/artifact_scan/feature/fusion.py（FusionGating 可学习注意力门控 + 训练/融合 CLI）
+  - 模块：拼接 K 路特征 → MLP → softmax 门控权重 → 逐视图加权融合；弱监督（labels.period 分类）辅助训练；熵正则防塌缩
+  - 融合：3 路（dinov2/siglip/registers）→ data/features/fused/fusion.npy（493×768，L2 归一化）+ gate_weights.npy + gate.pt
+  - 验证：493 样本 / 11 类 period，acc ~76%（随机 ~9%）；门控权重 ≈ [0.23, 0.00, 0.77]（dinov2 + registers 主导）
+  - 踩坑：softmax 门控易塌缩到单视图（[0,0,1]）→ 加门控熵正则 + 用更粗的 period 标签（culture 79 类过细）
 </details>
 
 ---
