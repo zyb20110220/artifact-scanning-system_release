@@ -2,4 +2,5 @@
 /clean
 /annotated
 /quality
-/features/images/
+# 特征图片下载缓存（可重建，不做版本管理）
+/features/**/images/

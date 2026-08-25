@@ -142,7 +142,7 @@
 | # | 任务 | 状态 | 完成日期 | 备注 |
 |---|------|------|---------|------|
 | 2.1 | DINOv2 特征提取服务（gRPC + 模型缓存） | ✅ | 2026-08-25 | 本机 CPU 跑通：特征 493×768 + L2；gRPC 服务 + 模型缓存验证；数据增强：数据补充后 684 条 |
-| 2.2 | SigLIP 特征提取服务 | ⬜ | | |
+| 2.2 | SigLIP 特征提取服务 | ✅ | 2026-08-25 | 复用模型注册表/gRPC；特征 493×768；vision pooler |
 | 2.3 | DINOv2-registers 局部特征提取 | ⬜ | | patch tokens + GeM 池化 |
 | 2.4 | 特征融合模块（可学习注意力门控） | ⬜ | | |
 | 2.5 | 对比学习训练（SimCLR + Center Loss） | ⬜ | | 解决数据稀疏问题 |
@@ -163,6 +163,15 @@
   - gRPC 服务：feature.proto（ExtractFeatures/GetModelInfo）；service.py FeatureServicer 按模型名懒加载并缓存（模型缓存）；支持字节/URL 输入；server.py 绑定 0.0.0.0；client.py 测试返回 dim=768 n=2
   - 踩坑：Windows 上 server 绑定 [::] 仅 IPv6 → 改 0.0.0.0；grpc_tools 生成的 feature_pb2_grpc 绝对导入 → 改包内相对导入（from . import feature_pb2）；transformers 5.x DinoV2Model/Dinov2Model，AutoImageProcessor 需 torchvision
   - 数据补充（同日，作为阶段 1 增强）：raw 133→733（Cleveland+400/Harvard+95/MET+15/Rijksmuseum+90，Smithsonian key 失效跳过）→ clean 684 → annotated 684（Wikidata 补全 32）→ DVC push（13 files）→ 质量指标/Grafana 更新
+
+- [x] 2026-08-25：SigLIP 特征提取服务（阶段 2.2）
+  - 交付：model.py 增加 siglip 分支（vision_model.pooler_output 作为全局特征）+ 注册表 siglip-base
+  - 模型：google/siglip-base-patch16-224（768 维，HF 缓存 813MB）
+  - 适配：transformers 5.x 中 get_image_features 返回 BaseModelOutputWithPooling（非张量）；SigLIP 为双塔，需用 vision_model 编码器；AutoImageProcessor 需 torchvision
+  - 批量提取：extract_dataset 复用（--model siglip-base）→ data/features/siglip/features.npy（493×768）+ meta.ndjson；DVC push（1 file，remote 同步）
+  - gRPC 验证：FeatureServicer 按 request.model 懒加载；同进程绑定 50052 验收 dim=768
+  - 文档：docs/feature-extraction.md（模块/模型/用法/gRPC/重生成指南）
+  - 注意：data/.gitignore 用 /features/**/images/ 忽略所有模型图片缓存
 </details>
 
 ---

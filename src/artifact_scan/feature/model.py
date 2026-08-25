@@ -12,12 +12,13 @@ from transformers import AutoImageProcessor, AutoModel
 
 logger = logging.getLogger(__name__)
 
-# 模型注册表：名称 -> HF 仓库（维度）
+# 模型注册表：名称 -> (HF 仓库, 维度, 类型)
+# 类型用于选择特征提取方式：dinov2 用 CLS token；siglip 用 vision pooler
 _MODEL_REGISTRY = {
-    "dinov2-base": ("facebook/dinov2-base", 768),       # ViT-B/14
-    "dinov2-small": ("facebook/dinov2-small", 384),     # ViT-S/14
-    "dinov2-registers-base": ("facebook/dinov2-with-registers-base", 768),
-    "siglip-base": ("google/siglip-base-patch16-224", 768),
+    "dinov2-base": ("facebook/dinov2-base", 768, "dinov2"),             # ViT-B/14
+    "dinov2-small": ("facebook/dinov2-small", 384, "dinov2"),           # ViT-S/14
+    "dinov2-registers-base": ("facebook/dinov2-with-registers-base", 768, "dinov2"),
+    "siglip-base": ("google/siglip-base-patch16-224", 768, "siglip"),
 }
 _DEFAULT_NAME = "dinov2-base"
 
@@ -39,7 +40,7 @@ class FeatureModel:
         if name not in _MODEL_REGISTRY:
             raise ValueError("未知模型 %r，可选：%s" % (name, ", ".join(_MODEL_REGISTRY)))
         self.name = name
-        self.repo, self.dim = _MODEL_REGISTRY[name]
+        self.repo, self.dim, self.kind = _MODEL_REGISTRY[name]
         self.device = device
         if cache_dir is None:
             cache_dir = _hf_cache_dir()
@@ -63,9 +64,13 @@ class FeatureModel:
         pil = [_load_img(i) for i in images]
         inputs = self.processor(images=pil, return_tensors="pt").to(self.device)
         with torch.no_grad():
-            outputs = self.model(**inputs)
-        # DINOv2 返回 last_hidden_state（含 CLS 与 patch token），用 CLS 向量
-        feats = outputs.last_hidden_state[:, 0, :]  # (N, dim)
+            if self.kind == "siglip":
+                # SigLIP 用 vision 编码器的 CLS 池化向量
+                feats = self.model.vision_model(**inputs).pooler_output
+            else:
+                # DINOv2 用 last_hidden_state 的 CLS token
+                outputs = self.model(**inputs)
+                feats = outputs.last_hidden_state[:, 0, :]
         return _l2_normalize(feats.cpu().numpy())
 
     def extract_one(self, image):
@@ -81,8 +86,11 @@ class FeatureModel:
         pil = [_load_img(i) for i in images]
         inputs = self.processor(images=pil, return_tensors="pt").to(self.device)
         with torch.no_grad():
-            outputs = self.model(**inputs)
-        feats = outputs.last_hidden_state[:, 1:, :].mean(dim=1)  # 去掉 CLS
+            if self.kind == "siglip":
+                h = self.model.vision_model(**inputs).last_hidden_state
+            else:
+                h = self.model(**inputs).last_hidden_state
+        feats = h[:, 1:, :].mean(dim=1)  # 去掉 CLS，平均 patch token
         return _l2_normalize(feats.cpu().numpy())
 
 

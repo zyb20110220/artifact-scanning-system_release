@@ -1,0 +1,5 @@
+outs:
+- md5: 03343de5b0379ef554b64a457d9f89ae
+  size: 92690
+  hash: md5
+  path: meta.ndjson
