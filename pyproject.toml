@@ -18,6 +18,17 @@ dependencies = [
 dev = [
     "pytest>=8.0",
 ]
+# 特征工程（阶段 2）：宿主机为 CPU，请用 CPU 版 torch 安装
+#   pip install -e ".[feature]" --index-url https://download.pytorch.org/whl/cpu
+feature = [
+    "torch>=2.0",
+    "torchvision>=0.15",
+    "transformers>=4.40",
+    "grpcio>=1.60",
+    "grpcio-tools>=1.60",
+    "numpy>=1.24",
+    "pillow>=10.0",
+]
 
 [build-system]
 requires = ["setuptools>=68"]

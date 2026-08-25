@@ -56,7 +56,8 @@ class RijksmuseumCollector(BaseCollector):
             return False
         data = resp.json()
         self._next_token = self._extract_token(data.get("next"))
-        ids = [it.get("id") for it in (data.get("orderedItems") or []) if it.get("id")]
+        ids = [it.get("id")
+               for it in (data.get("orderedItems") or []) if it.get("id")]
         self._id_queue.extend(ids)
         return bool(ids)
 
@@ -108,7 +109,8 @@ class RijksmuseumCollector(BaseCollector):
             if not isinstance(name, dict) or name.get("type") != "Name":
                 continue
             if aat:
-                classes = [c.get("id") for c in name.get("classified_as") or []]
+                classes = [c.get("id")
+                           for c in name.get("classified_as") or []]
                 if aat not in classes:
                     continue
             if name.get("content"):
@@ -186,4 +188,3 @@ class RijksmuseumCollector(BaseCollector):
             if url:
                 return url
         return None
-

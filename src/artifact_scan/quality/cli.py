@@ -25,9 +25,12 @@ def build_parser():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--raw", default="data/raw", help="原始数据目录")
-    parser.add_argument("--clean", default="data/clean/records.ndjson", help="清洗数据文件")
-    parser.add_argument("--annotated", default="data/annotated/records.ndjson", help="标注数据文件")
-    parser.add_argument("--report", default="data/quality/report.json", help="报告输出文件")
+    parser.add_argument(
+        "--clean", default="data/clean/records.ndjson", help="清洗数据文件")
+    parser.add_argument(
+        "--annotated", default="data/annotated/records.ndjson", help="标注数据文件")
+    parser.add_argument(
+        "--report", default="data/quality/report.json", help="报告输出文件")
     parser.add_argument("--pushgateway", default="http://127.0.0.1:9091",
                         help="Pushgateway 地址（--push 时使用）")
     parser.add_argument("--push", action="store_true",

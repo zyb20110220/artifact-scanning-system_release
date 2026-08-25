@@ -30,7 +30,8 @@ class SmithsonianCollector(BaseCollector):
 
     def fetch_page(self, offset):
         if not self.api_key:
-            logger.error("Smithsonian API 需要 api_key（申请：%s），可用 --api-key 传入", KEY_URL)
+            logger.error(
+                "Smithsonian API 需要 api_key（申请：%s），可用 --api-key 传入", KEY_URL)
             return []
         start = offset  # Smithsonian start 从 0 开始
         params = {
@@ -55,13 +56,15 @@ class SmithsonianCollector(BaseCollector):
         rec["id"] = r.get("id")
         rec["source"] = self.source
         rec["title"] = r.get("title") or dnr.get("title", {}).get("content")
-        rec["artist"] = (idx.get("artistDisplayName") or idx.get("artistName") or [None])[0]
+        rec["artist"] = (idx.get("artistDisplayName")
+                         or idx.get("artistName") or [None])[0]
         rec["culture"] = (idx.get("culture") or [None])[0]
         rec["date"] = (idx.get("date") or [None])[0]
         rec["medium"] = ", ".join(idx.get("object_type") or [])
         rec["image_url"] = self._first_media(dnr)
         rec["url"] = self._record_url(r, dnr)
-        rec["description"] = self._freetext_value(freetext, "physicalDescription")
+        rec["description"] = self._freetext_value(
+            freetext, "physicalDescription")
         rec["object_id"] = r.get("id")
         return rec
 

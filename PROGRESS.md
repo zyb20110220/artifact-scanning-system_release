@@ -141,7 +141,7 @@
 
 | # | 任务 | 状态 | 完成日期 | 备注 |
 |---|------|------|---------|------|
-| 2.1 | DINOv2 特征提取服务（gRPC + 模型缓存） | ⬜ | | |
+| 2.1 | DINOv2 特征提取服务（gRPC + 模型缓存） | ✅ | 2026-08-25 | 本机 CPU 跑通：特征 493×768 + L2；gRPC 服务 + 模型缓存验证；数据增强：数据补充后 684 条 |
 | 2.2 | SigLIP 特征提取服务 | ⬜ | | |
 | 2.3 | DINOv2-registers 局部特征提取 | ⬜ | | patch tokens + GeM 池化 |
 | 2.4 | 特征融合模块（可学习注意力门控） | ⬜ | | |
@@ -154,7 +154,15 @@
 <details>
 <summary><b>特征工程</b></summary>
 
-- [ ] 待开始
+- [x] 2026-08-25：DINOv2 特征提取服务（阶段 2.1）
+  - 交付：src/artifact_scan/feature/{model,extract,service,server,client,cli}.py + proto/feature.proto（生成 pb2/pb2_grpc）；pyproject 加 feature 可选依赖组
+  - 环境：Python 3.14 安装 CPU 版 torch 2.13.0+cpu / torchvision 0.28.0+cpu / transformers 5.15.1 / grpcio 1.83.0
+  - 模型：facebook/dinov2-base（ViT-B/14，768 维），HF 缓存 346MB；FeatureModel 封装 AutoModel+AutoImageProcessor，输出 L2 归一化特征
+  - 批量提取：extract_dataset 读 annotated → 下载图（代理+UA+重试）→ DINOv2 CLS 特征 → features.npy（493×768，float32）+ meta.ndjson（493 行）；下载缓存 data/features/images/
+  - 验证：单图 shape(768,) norm=1.0；批量 493/493 成功 failed=0；norm min/max 均 1.0
+  - gRPC 服务：feature.proto（ExtractFeatures/GetModelInfo）；service.py FeatureServicer 按模型名懒加载并缓存（模型缓存）；支持字节/URL 输入；server.py 绑定 0.0.0.0；client.py 测试返回 dim=768 n=2
+  - 踩坑：Windows 上 server 绑定 [::] 仅 IPv6 → 改 0.0.0.0；grpc_tools 生成的 feature_pb2_grpc 绝对导入 → 改包内相对导入（from . import feature_pb2）；transformers 5.x DinoV2Model/Dinov2Model，AutoImageProcessor 需 torchvision
+  - 数据补充（同日，作为阶段 1 增强）：raw 133→733（Cleveland+400/Harvard+95/MET+15/Rijksmuseum+90，Smithsonian key 失效跳过）→ clean 684 → annotated 684（Wikidata 补全 32）→ DVC push（13 files）→ 质量指标/Grafana 更新
 </details>
 
 ---

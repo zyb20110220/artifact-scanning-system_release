@@ -1,0 +1,5 @@
+outs:
+- md5: 910d6564e2a5faa06e2218e11966c1f7
+  size: 1514624
+  hash: md5
+  path: features.npy

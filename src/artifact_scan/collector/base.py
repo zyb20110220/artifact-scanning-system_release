@@ -46,8 +46,10 @@ class BaseCollector:
         self.api_key = api_key        # 部分 API 需要 key
         self.query = query            # 关键词（部分来源使用）
         self.done_ids = set()
-        self.records_file = os.path.join(out_dir, self.source, "records.ndjson")
-        self.checkpoint_file = os.path.join(out_dir, self.source, ".checkpoint.json")
+        self.records_file = os.path.join(
+            out_dir, self.source, "records.ndjson")
+        self.checkpoint_file = os.path.join(
+            out_dir, self.source, ".checkpoint.json")
 
         # requests 会话（复用连接；可选代理）
         self.session = requests.Session()
@@ -72,7 +74,7 @@ class BaseCollector:
                     # 退避：2 的 attempt 次幂 + 随机抖动，上限 60s
                     wait = min(2 ** attempt, 60) + (attempt and 0.5 or 0)
                     logger.warning("%s 返回 %s，%s 秒后重试（第 %s 次）",
-                                  url, resp.status_code, round(wait, 1), attempt + 1)
+                                   url, resp.status_code, round(wait, 1), attempt + 1)
                     time.sleep(wait)
                     continue
                 # 其他错误：记录并返回空

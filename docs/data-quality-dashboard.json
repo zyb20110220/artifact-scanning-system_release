@@ -1,86 +1,174 @@
 {
-  "dashboard": {
-    "title": "数据质量 (Artifact Data Quality)",
-    "uid": "artifact-data-quality",
-    "schemaVersion": 39,
-    "version": 1,
-    "timezone": "browser",
-    "refresh": "30s",
-    "time": { "from": "now-1h", "to": "now" },
-    "tags": ["artifact", "data-quality"],
-    "panels": [
-      {
-        "id": 1,
-        "title": "各数据源原始记录数",
-        "type": "bargauge",
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
-        "options": {
-          "orientation": "horizontal",
-          "displayMode": "gradient",
-          "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+    "dashboard": {
+        "title": "数据质量 (Artifact Data Quality)",
+        "uid": "artifact-data-quality",
+        "schemaVersion": 39,
+        "version": 1,
+        "timezone": "browser",
+        "refresh": "30s",
+        "time": {
+            "from": "now-1h",
+            "to": "now"
         },
-        "targets": [
-          {
-            "refId": "A",
-            "expr": "artifact_raw_records_total",
-            "legendFormat": "{{source}}",
-            "format": "table"
-          }
+        "tags": [
+            "artifact",
+            "data-quality"
+        ],
+        "panels": [
+            {
+                "id": 1,
+                "title": "各数据源原始记录数",
+                "type": "bargauge",
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "gridPos": {
+                    "h": 8,
+                    "w": 8,
+                    "x": 0,
+                    "y": 0
+                },
+                "options": {
+                    "orientation": "horizontal",
+                    "displayMode": "gradient",
+                    "reduceOptions": {
+                        "values": false,
+                        "calcs": [
+                            "lastNotNull"
+                        ]
+                    }
+                },
+                "targets": [
+                    {
+                        "refId": "A",
+                        "expr": "artifact_raw_records_total",
+                        "legendFormat": "{{source}}",
+                        "format": "table"
+                    }
+                ]
+            },
+            {
+                "id": 2,
+                "title": "清洗/标注/去重统计",
+                "type": "stat",
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "gridPos": {
+                    "h": 8,
+                    "w": 8,
+                    "x": 8,
+                    "y": 0
+                },
+                "options": {
+                    "reduceOptions": {
+                        "values": false,
+                        "calcs": [
+                            "lastNotNull"
+                        ]
+                    }
+                },
+                "targets": [
+                    {
+                        "refId": "A",
+                        "expr": "artifact_clean_records_total",
+                        "legendFormat": "清洗后"
+                    },
+                    {
+                        "refId": "B",
+                        "expr": "artifact_annotated_records_total",
+                        "legendFormat": "标注后"
+                    },
+                    {
+                        "refId": "C",
+                        "expr": "artifact_dedup_removed_total",
+                        "legendFormat": "去重移除"
+                    }
+                ]
+            },
+            {
+                "id": 3,
+                "title": "字段完整率",
+                "type": "bargauge",
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "gridPos": {
+                    "h": 8,
+                    "w": 8,
+                    "x": 16,
+                    "y": 0
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "percentunit",
+                        "max": 1,
+                        "min": 0
+                    },
+                    "overrides": []
+                },
+                "options": {
+                    "orientation": "horizontal",
+                    "displayMode": "gradient",
+                    "reduceOptions": {
+                        "values": false,
+                        "calcs": [
+                            "lastNotNull"
+                        ]
+                    }
+                },
+                "targets": [
+                    {
+                        "refId": "A",
+                        "expr": "artifact_field_completeness",
+                        "legendFormat": "{{field}}"
+                    }
+                ]
+            },
+            {
+                "id": 4,
+                "title": "标注覆盖率 (5 级标签)",
+                "type": "bargauge",
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 8
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "percentunit",
+                        "max": 1,
+                        "min": 0
+                    },
+                    "overrides": []
+                },
+                "options": {
+                    "orientation": "horizontal",
+                    "displayMode": "gradient",
+                    "reduceOptions": {
+                        "values": false,
+                        "calcs": [
+                            "lastNotNull"
+                        ]
+                    }
+                },
+                "targets": [
+                    {
+                        "refId": "A",
+                        "expr": "artifact_label_coverage",
+                        "legendFormat": "{{label}}"
+                    }
+                ]
+            }
         ]
-      },
-      {
-        "id": 2,
-        "title": "清洗/标注/去重统计",
-        "type": "stat",
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
-        "options": { "reduceOptions": { "values": false, "calcs": ["lastNotNull"] } },
-        "targets": [
-          { "refId": "A", "expr": "artifact_clean_records_total", "legendFormat": "清洗后" },
-          { "refId": "B", "expr": "artifact_annotated_records_total", "legendFormat": "标注后" },
-          { "refId": "C", "expr": "artifact_dedup_removed_total", "legendFormat": "去重移除" }
-        ]
-      },
-      {
-        "id": 3,
-        "title": "字段完整率",
-        "type": "bargauge",
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
-        "fieldConfig": {
-          "defaults": { "unit": "percentunit", "max": 1, "min": 0 },
-          "overrides": []
-        },
-        "options": {
-          "orientation": "horizontal",
-          "displayMode": "gradient",
-          "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
-        },
-        "targets": [
-          { "refId": "A", "expr": "artifact_field_completeness", "legendFormat": "{{field}}" }
-        ]
-      },
-      {
-        "id": 4,
-        "title": "标注覆盖率 (5 级标签)",
-        "type": "bargauge",
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-        "fieldConfig": {
-          "defaults": { "unit": "percentunit", "max": 1, "min": 0 },
-          "overrides": []
-        },
-        "options": {
-          "orientation": "horizontal",
-          "displayMode": "gradient",
-          "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
-        },
-        "targets": [
-          { "refId": "A", "expr": "artifact_label_coverage", "legendFormat": "{{label}}" }
-        ]
-      }
-    ]
-  },
-  "overwrite": true
+    },
+    "overwrite": true
 }

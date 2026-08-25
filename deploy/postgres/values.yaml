@@ -14,7 +14,7 @@ image:
 auth:
   postgresPassword: "artifactpg2026"
   username: "artifact"
-  password: "artifact2026"   # 自定义用户 artifact 的密码
+  password: "artifact2026" # 自定义用户 artifact 的密码
   database: "artifactdb"
 
 primary:

@@ -23,7 +23,8 @@ class HarvardCollector(BaseCollector):
 
     def fetch_page(self, offset):
         if not self.api_key:
-            logger.error("Harvard API 需要 api_key（申请：%s），可用 --api-key 传入", KEY_URL)
+            logger.error(
+                "Harvard API 需要 api_key（申请：%s），可用 --api-key 传入", KEY_URL)
             return []
         page = offset // self.page_size + 1  # Harvard 页号从 1 开始
         params = {"apikey": self.api_key, "page": page, "size": self.page_size}

@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 
 API = "https://www.wikidata.org/w/api.php"
 # Wikidata 要求自定义 User-Agent（否则 403）
-HEADERS = {"User-Agent": "artifact-scanning-system/0.1 (archaeology data collector)"}
+HEADERS = {
+    "User-Agent": "artifact-scanning-system/0.1 (archaeology data collector)"}
 
 
 def wb_search(term, proxy=None, limit=3):

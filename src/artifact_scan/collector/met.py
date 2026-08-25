@@ -56,7 +56,8 @@ class MetCollector(BaseCollector):
         rec["date"] = raw.get("objectDate")
         rec["medium"] = raw.get("medium")
         rec["dimensions"] = raw.get("dimensions")
-        rec["image_url"] = raw.get("primaryImage") or raw.get("primaryImageSmall")
+        rec["image_url"] = raw.get(
+            "primaryImage") or raw.get("primaryImageSmall")
         rec["url"] = raw.get("objectURL")
         rec["description"] = raw.get("description")
         rec["object_id"] = raw.get("objectID")
