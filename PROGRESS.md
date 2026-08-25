@@ -143,7 +143,7 @@
 |---|------|------|---------|------|
 | 2.1 | DINOv2 特征提取服务（gRPC + 模型缓存） | ✅ | 2026-08-25 | 本机 CPU 跑通：特征 493×768 + L2；gRPC 服务 + 模型缓存验证；数据增强：数据补充后 684 条 |
 | 2.2 | SigLIP 特征提取服务 | ✅ | 2026-08-25 | 复用模型注册表/gRPC；特征 493×768；vision pooler |
-| 2.3 | DINOv2-registers 局部特征提取 | ⬜ | | patch tokens + GeM 池化 |
+| 2.3 | DINOv2-registers 局部特征提取 | ✅ | 2026-08-25 | patch tokens + GeM 池化；特征 493×768 |
 | 2.4 | 特征融合模块（可学习注意力门控） | ⬜ | | |
 | 2.5 | 对比学习训练（SimCLR + Center Loss） | ⬜ | | 解决数据稀疏问题 |
 | 2.6 | Milvus 向量库部署与索引构建 | ⬜ | | |
@@ -172,6 +172,14 @@
   - gRPC 验证：FeatureServicer 按 request.model 懒加载；同进程绑定 50052 验收 dim=768
   - 文档：docs/feature-extraction.md（模块/模型/用法/gRPC/重生成指南）
   - 注意：data/.gitignore 用 /features/**/images/ 忽略所有模型图片缓存
+
+- [x] 2026-08-25：DINOv2-registers 局部特征提取（阶段 2.3）
+  - 交付：model.py 增加 patch_offset（registers 序列 [CLS,4 register,256 patch]，patch 偏移 5）+ extract_gem（GeM 池化）+ extract_patches + extract_pooled 适配
+  - 模型：facebook/dinov2-with-registers-base（768 维，HF 缓存 346MB；Dinov2WithRegistersModel，num_register_tokens=4，last_hidden_state 261×768）
+  - GeM 池化：_gem_pool 沿序列维度 (mean(x^p))^(1/p)，clamp≥1e-6 防负值 NaN，默认 p=3；extract_patches 返回 (N,256,768) 局部特征
+  - cli/extract 扩展：--pool cls/gem/pooled + --image-dir 复用图片缓存（避免重复下载）
+  - 批量提取：--model dinov2-registers-base --pool gem → data/features/registers/features.npy（493×768，norm=1.0）
+  - 踩坑：extract_gem/pooled 单张返回 (1,dim) 导致 stack 三维 → extract 去单样本 batch 维
 </details>
 
 ---

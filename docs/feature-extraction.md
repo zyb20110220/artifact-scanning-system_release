@@ -23,7 +23,7 @@ src/artifact_scan/feature/
 |------|---------|------|------|---------|
 | `dinov2-base` | facebook/dinov2-base | 768 | dinov2 | CLS token |
 | `dinov2-small` | facebook/dinov2-small | 384 | dinov2 | CLS token |
-| `dinov2-registers-base` | facebook/dinov2-with-registers-base | 768 | dinov2 | CLS token |
+| `dinov2-registers-base` | facebook/dinov2-with-registers-base | 768 | dinov2 | CLS token / GeM(patch) |
 | `siglip-base` | google/siglip-base-patch16-224 | 768 | siglip | vision pooler |
 
 > 本项目宿主机为 CPU，请安装 CPU 版依赖：
@@ -41,9 +41,12 @@ python -m artifact_scan.feature.cli `
 ```
 
 - 读取标注 ndjson，仅处理含 `image_url` 的记录
-- 下载图片到 `data/features/images/`（支持代理、UA、重试、缓存命中跳过）
-- 提取 CLS / pooler 特征，L2 归一化
+- 下载图片到 `data/features/images/`（支持代理、UA、重试、缓存命中跳过；`--image-dir` 可复用已有缓存）
+- 提取特征并按 `--pool` 聚合：`cls`（CLS）/ `gem`（GeM 池化）/ `pooled`（平均池化），L2 归一化
 - 输出：`data/features/features.npy`（N×768，float32）、`data/features/meta.ndjson`
+
+> DINOv2-registers 模型序列含 register token（1 CLS + 4 register + 256 patch），
+> patch 特征从下标 5 起；`extract_gem` 对 patch 做 GeM 池化、`extract_patches` 返回全部 patch。
 
 ## gRPC 特征服务
 

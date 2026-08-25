@@ -48,7 +48,8 @@ def _download(url, dest, proxy=None, retries=3, timeout=30):
 
 
 def extract_dataset(annotated_file, out_dir, model_name="dinov2-base",
-                    proxy=None, limit=None, image_dir=None, batch=16):
+                    proxy=None, limit=None, image_dir=None, batch=16,
+                    pool="cls"):
     """对标注数据中带图的记录批量提取特征。
 
     返回：写入 features.npy / meta.ndjson / 类计数字典。
@@ -79,7 +80,12 @@ def extract_dataset(annotated_file, out_dir, model_name="dinov2-base",
             logger.warning("[%s/%s] 跳过 %s（下载失败）", i + 1, len(records), uid)
             continue
         try:
-            f = model.extract_one(img_path)
+            if pool == "gem":
+                f = model.extract_gem(img_path)
+            elif pool == "pooled":
+                f = model.extract_pooled(img_path)
+            else:  # cls
+                f = model.extract_one(img_path)
         except Exception as exc:  # 图损坏等
             logger.warning("[%s/%s] 跳过 %s（提取失败：%s）", i + 1, len(records), uid, exc)
             failed += 1
@@ -87,6 +93,9 @@ def extract_dataset(annotated_file, out_dir, model_name="dinov2-base",
         if f is None:
             failed += 1
             continue
+        f = np.asarray(f, dtype=np.float32)
+        if f.ndim == 2 and f.shape[0] == 1:
+            f = f[0]  # 去掉单样本 batch 维（extract_gem/pooled 单张返回 (1, dim)）
         feats.append(f)
         metas.append({"id": rid, "source": r.get("source"),
                       "title": r.get("title"), "image_url": r["image_url"],

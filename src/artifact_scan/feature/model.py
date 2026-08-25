@@ -12,13 +12,17 @@ from transformers import AutoImageProcessor, AutoModel
 
 logger = logging.getLogger(__name__)
 
-# 模型注册表：名称 -> (HF 仓库, 维度, 类型)
-# 类型用于选择特征提取方式：dinov2 用 CLS token；siglip 用 vision pooler
+# 模型注册表：名称 -> (HF 仓库, 维度, 类型, patch 偏移)
+# 类型：dinov2 用 CLS token；siglip 用 vision pooler
+# patch 偏移：patch token 在 last_hidden_state 中的起始下标
+#   dinov2（无 register）序列 = [CLS, patch...] → 偏移 1
+#   dinov2-registers 序列 = [CLS, register..., patch...] → 偏移 1 + num_register = 5
+#   siglip vision 序列 = [CLS, patch...] → 偏移 1
 _MODEL_REGISTRY = {
-    "dinov2-base": ("facebook/dinov2-base", 768, "dinov2"),             # ViT-B/14
-    "dinov2-small": ("facebook/dinov2-small", 384, "dinov2"),           # ViT-S/14
-    "dinov2-registers-base": ("facebook/dinov2-with-registers-base", 768, "dinov2"),
-    "siglip-base": ("google/siglip-base-patch16-224", 768, "siglip"),
+    "dinov2-base": ("facebook/dinov2-base", 768, "dinov2", 1),             # ViT-B/14
+    "dinov2-small": ("facebook/dinov2-small", 384, "dinov2", 1),           # ViT-S/14
+    "dinov2-registers-base": ("facebook/dinov2-with-registers-base", 768, "dinov2", 5),
+    "siglip-base": ("google/siglip-base-patch16-224", 768, "siglip", 1),
 }
 _DEFAULT_NAME = "dinov2-base"
 
@@ -40,7 +44,7 @@ class FeatureModel:
         if name not in _MODEL_REGISTRY:
             raise ValueError("未知模型 %r，可选：%s" % (name, ", ".join(_MODEL_REGISTRY)))
         self.name = name
-        self.repo, self.dim, self.kind = _MODEL_REGISTRY[name]
+        self.repo, self.dim, self.kind, self.patch_offset = _MODEL_REGISTRY[name]
         self.device = device
         if cache_dir is None:
             cache_dir = _hf_cache_dir()
@@ -78,20 +82,62 @@ class FeatureModel:
         out = self.extract([image])
         return out[0] if out is not None else None
 
+    def _hidden(self, inputs):
+        """返回 last_hidden_state（按模型类型分派）。"""
+        if self.kind == "siglip":
+            return self.model.vision_model(**inputs).last_hidden_state
+        return self.model(**inputs).last_hidden_state
+
+    def _patches(self, inputs):
+        """提取 patch token 特征（去掉 CLS/register），返回 (N, P, dim) tensor。"""
+        h = self._hidden(inputs)
+        return h[:, self.patch_offset:, :]
+
     def extract_pooled(self, images):
         """平均池化所有 patch token（含局部信息），常用于基线对比。"""
         import torch
         if not images:
             return None
+        images = images if isinstance(images, (list, tuple)) else [images]
         pil = [_load_img(i) for i in images]
         inputs = self.processor(images=pil, return_tensors="pt").to(self.device)
         with torch.no_grad():
-            if self.kind == "siglip":
-                h = self.model.vision_model(**inputs).last_hidden_state
-            else:
-                h = self.model(**inputs).last_hidden_state
-        feats = h[:, 1:, :].mean(dim=1)  # 去掉 CLS，平均 patch token
+            patches = self._patches(inputs)
+        feats = patches.mean(dim=1)  # 平均 patch token
         return _l2_normalize(feats.cpu().numpy())
+
+    def extract_gem(self, images, p=3.0):
+        """GeM 池化 patch token → 鲁棒全局特征（阶段 2.3 局部特征聚合）。
+
+        p 越大越强调高激活区域（近似 max-pooling）；常用 p=3。
+        返回 (N, dim) L2 归一化特征。
+        """
+        import torch
+        if not images:
+            return None
+        images = images if isinstance(images, (list, tuple)) else [images]
+        pil = [_load_img(i) for i in images]
+        inputs = self.processor(images=pil, return_tensors="pt").to(self.device)
+        with torch.no_grad():
+            patches = self._patches(inputs)
+        feats = _gem_pool(patches, p=p)
+        return _l2_normalize(feats.cpu().numpy())
+
+    def extract_patches(self, images):
+        """返回全部 patch token 特征（不池化），供局部特征匹配/后续融合。
+
+        返回 (N, P, dim) float32 数组（已 L2 归一化每行）。
+        """
+        import torch
+        if not images:
+            return None
+        images = images if isinstance(images, (list, tuple)) else [images]
+        pil = [_load_img(i) for i in images]
+        inputs = self.processor(images=pil, return_tensors="pt").to(self.device)
+        with torch.no_grad():
+            patches = self._patches(inputs)
+        return _l2_normalize(patches.cpu().numpy().reshape(-1, patches.shape[-1])) \
+            .reshape(patches.shape[0], patches.shape[1], patches.shape[-1])
 
 
 def _load_img(src):
@@ -99,6 +145,16 @@ def _load_img(src):
     if isinstance(src, str):
         return Image.open(src).convert("RGB")
     return src.convert("RGB")
+
+
+def _gem_pool(x, p=3.0):
+    """GeM（广义均值）池化：沿序列维度聚合。
+
+    x: (N, P, D)。公式 gem = (mean(x^p))^(1/p)。
+    对可能含负值的 token 特征，先 clamp 到 >= 1e-6 以避免非整数幂的 NaN。
+    """
+    import torch
+    return (x.clamp(min=1e-6) ** p).mean(dim=1) ** (1.0 / p)
 
 
 def _l2_normalize(arr):

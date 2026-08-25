@@ -27,6 +27,10 @@ def build_parser():
     parser.add_argument("--proxy", default=None, help="HTTP 代理（下载图片）")
     parser.add_argument("--limit", type=int, default=None, help="最多处理记录条数")
     parser.add_argument("--batch", type=int, default=16, help="推理批大小")
+    parser.add_argument("--pool", default="cls", choices=["cls", "gem", "pooled"],
+                        help="特征聚合方式：cls(pooler)/gem(GeM)/pooled(平均)")
+    parser.add_argument("--image-dir", default=None,
+                        help="图片缓存目录（缺省为 <out>/images，可复用已有缓存）")
     parser.add_argument("--verbose", action="store_true", help="调试日志")
     return parser
 
@@ -44,6 +48,8 @@ def main(argv=None):
         proxy=args.proxy,
         limit=args.limit,
         batch=args.batch,
+        pool=args.pool,
+        image_dir=args.image_dir,
     )
     print("特征提取统计：")
     for k, v in stats.items():
