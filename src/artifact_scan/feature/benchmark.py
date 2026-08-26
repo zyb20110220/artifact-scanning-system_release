@@ -35,7 +35,8 @@ def load_labels(meta_file=_META, annotated_file=_ANNOTATED):
             if not line.strip():
                 continue
             r = json.loads(line)
-            pcmap[str(r["id"])] = (r.get("labels") or {}).get("period") or r.get("period")
+            pcmap[str(r["id"])] = (r.get("labels") or {}).get(
+                "period") or r.get("period")
     labels = [(pcmap.get(str(i)) or "unknown") for i in ids]
     classes = sorted(set(labels))
     codes = [classes.index(l) for l in labels]

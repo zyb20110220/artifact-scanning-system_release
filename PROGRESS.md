@@ -234,7 +234,7 @@
 
 | # | 任务 | 状态 | 完成日期 | 备注 |
 |---|------|------|---------|------|
-| 3.1 | 多路召回实现（DINOv2 + SigLIP + 局部特征） | ⬜ | | |
+| 3.1 | 多路召回实现（DINOv2 + SigLIP + 局部特征） | ✅ | 2026-08-26 | 4 路 RRF 融合召回；period P@5=0.77 |
 | 3.2 | Cross-Encoder 精排模型训练 | ⬜ | | |
 | 3.3 | 图谱增强重排 | ⬜ | | |
 | 3.4 | 检索编排服务（多路 → 精排 → 图谱 → Top-K） | ⬜ | | |
@@ -246,7 +246,13 @@
 <details>
 <summary><b>检索引擎</b></summary>
 
-- [ ] 待开始
+- [x] 2026-08-26：多路召回实现（阶段 3.1）
+  - 交付：src/artifact_scan/feature/recall.py（build 多路索引 + recall RRF 融合 + evaluate 评估）
+  - 多路：DINOv2 CLS / SigLIP / registers / 融合 4 路分别在 Milvus 建 HNSW(IP) 索引（artifact_dinov2/siglip/registers/fusion）
+  - 召回：query 各路特征 → 各集合检索 top-cand → RRF（1/(K+rank)，K=60）融合 → Top-K
+  - 评估：多路召回 P@5（period）= 0.768（50 样本），显著优于单路（融合 0.64 / SigLIP 0.59）
+  - 里程碑预警：culture P@5 = 0.392（50 样本）未达 3.6 的 ≥0.60——culture 类别远多于 period（79 vs 12），需精排（3.2）/图谱增强（3.3）
+  - 用法：python -m artifact_scan.feature.recall --build / --eval [--label period|culture]
 </details>
 
 ---

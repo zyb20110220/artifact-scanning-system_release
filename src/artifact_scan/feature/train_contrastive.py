@@ -154,7 +154,8 @@ def main(argv=None):
 
     feats, labels, ids, classes = load_data()
     n, dim = feats[0].shape
-    logger.info("加载 %s 路特征 %s×%s，%s 类 period", len(feats), n, dim, len(classes) - 1)
+    logger.info("加载 %s 路特征 %s×%s，%s 类 period",
+                len(feats), n, dim, len(classes) - 1)
 
     projector, centers, hist = train(feats, labels, epochs=args.epochs,
                                      proj=args.proj, lr=args.lr,
