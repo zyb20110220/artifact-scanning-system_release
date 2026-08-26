@@ -236,7 +236,7 @@
 |---|------|------|---------|------|
 | 3.1 | 多路召回实现（DINOv2 + SigLIP + 局部特征） | ✅ | 2026-08-26 | 4 路 RRF 融合召回；period P@5=0.77 |
 | 3.2 | Cross-Encoder 精排模型训练 | ✅ | 2026-08-26 | 精排器已实现；首版未超初排（0.23 vs 0.25），待多路候选+难负例调优 |
-| 3.3 | 图谱增强重排 | ⬜ | | |
+| 3.3 | 图谱增强重排 | ✅ | 2026-08-26 | Neo4j 图谱增强接入编排；候选与 query 共享文化/时期加分 |
 | 3.4 | 检索编排服务（多路 → 精排 → 图谱 → Top-K） | ✅ | 2026-08-26 | 编排链路跑通；图谱钩子已预留(待3.3接入) |
 | 3.5 | 检索 A/B 评估框架 | ✅ | 2026-08-26 | 6 策略对比；culture 下 SigLIP 最优 P@5=0.31 |
 | 3.6 | 检索精度达到 culture P@5 ≥ 0.60 | ⬜ | | 里程碑 |
@@ -296,19 +296,39 @@
 
 | # | 任务 | 状态 | 完成日期 | 备注 |
 |---|------|------|---------|------|
-| 4.1 | Wikidata JSON Dump 本地索引 | ⬜ | | 离线批量匹配，避免线上 SPARQL |
-| 4.2 | Neo4j 集群部署（StatefulSet） | ⬜ | | |
-| 4.3 | 全量图谱导入（Artifact + Culture + Period + Material + ...） | ⬜ | | |
-| 4.4 | 图查询优化（索引 + 查询缓存） | ⬜ | | |
-| 4.5 | Cypher 查询库（文物关联 / 时期推断 / 文化溯源） | ⬜ | | |
-| 4.6 | 图谱完整性验证 | ⬜ | | |
+| 4.1 | Wikidata JSON Dump 本地索引 | ⬜ | | 全量 dump 数百GB，开发环境不现实 → 调整为已有标注标签构建图谱（4.3） |
+| 4.2 | Neo4j 集群部署（StatefulSet） | ✅ | 2026-08-26 | 手动 Deployment 单节点 5.26.30 社区版，bolt 7687 |
+| 4.3 | 全量图谱导入（Artifact + Culture + Period + Material + ...） | ✅ | 2026-08-26 | 684 文物 + Culture/Period/Material/Form/Decoration（基于标注标签） |
+| 4.4 | 图查询优化（索引 + 查询缓存） | ⬜ | | 后续（数据量大再优化） |
+| 4.5 | Cypher 查询库（文物关联 / 时期推断 / 文化溯源） | ✅ | 2026-08-26 | culture_trace / period_infer / similar_artifacts |
+| 4.6 | 图谱完整性验证 | ✅ | 2026-08-26 | graph_stats 节点计数一致 |
 
 ### 进度日志
 
 <details>
 <summary><b>知识图谱</b></summary>
 
-- [ ] 待开始
+- [x] 2026-08-26：Neo4j 部署（阶段 4.2）
+  - 交付：deploy/neo4j/{deployment,import-images,install}.ps1 + deployment.yaml（手动 Deployment + Service + PVC local-path 5Gi）
+  - 镜像：docker.io/neo4j:5.26-community（经代理 pull → 离线导入 3 节点）
+  - 启动：Neo4j 5.26.30 单节点，bolt 7687 / http 7474，NEO4J_AUTH=neo4j/graph2026
+  - 踩坑：Neo4j 5.x 启用 config strict_validation，镜像 conf 含旧键 PORT.7687.TCP.PORT → 报 fatal；
+    env 需用小写 config 键（NEO4J_server_config_strict__validation_enabled=false）而非全大写 → 启动成功
+  - 访问：kubectl -n neo4j port-forward svc/neo4j 7687:7687
+
+- [x] 2026-08-26：图谱导入（阶段 4.3）
+  - 交付：src/artifact_scan/graph.py（import_graph / graph_stats / culture_trace / period_infer / similar_artifacts / graph_boost）
+  - 导入：684 文物节点 + Culture(88) / Period(5) / Material(22) / Form(21) / Decoration(19) 关系（MERGE 幂等，UNWIND 批量）
+  - 数据来源：标注 labels（阶段 1.3），作为 4.1 全量 Wikidata dump 的现实性替代（开发环境）
+
+- [x] 2026-08-26：图谱增强重排（阶段 3.3）
+  - orchestrator.py 接入 graph_boost：候选与 query 共享 culture/period 加分，与精排分数加权（--graph --graph-w）
+  - 验证：query "Nathaniel Hurd" → 图谱增强把共享"美国/近代早期"的候选（如 Charles Apthorp）提升到 #1
+  - 编排完整链路：多路召回(RRF) → 图谱增强 → Cross-Encoder 精排 → Top-K
+
+- [x] 2026-08-26：Cypher 查询库 + 完整性验证（阶段 4.5 / 4.6）
+  - 查询库：culture_trace（文化溯源）/ period_infer（时期推断：美国→近代57/现代29）/ similar_artifacts（文物关联）
+  - 完整性：graph_stats 各标签节点计数一致（Artifact 684 / Culture 88 / Period 5 / Material 22 / Form 21 / Decoration 19）
 </details>
 
 ---
