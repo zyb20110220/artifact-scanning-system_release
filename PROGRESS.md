@@ -145,9 +145,9 @@
 | 2.2 | SigLIP 特征提取服务 | ✅ | 2026-08-25 | 复用模型注册表/gRPC；特征 493×768；vision pooler |
 | 2.3 | DINOv2-registers 局部特征提取 | ✅ | 2026-08-25 | patch tokens + GeM 池化；特征 493×768 |
 | 2.4 | 特征融合模块（可学习注意力门控） | ✅ | 2026-08-25 | 融合 493×768，acc~76%（period） |
-| 2.5 | 对比学习训练（SimCLR + Center Loss） | ⬜ | | 解决数据稀疏问题 |
+| 2.5 | 对比学习训练（SimCLR + Center Loss） | ✅ | 2026-08-26 | 多视角对比+CenterLoss 模块；对比特征 256 维；基准显示当前不优于融合特征 |
 | 2.6 | Milvus 向量库部署与索引构建 | ✅ | 2026-08-25 | standalone 3 组件 Running；融合特征 HNSW 索引，检索语义相似 |
-| 2.7 | 特征提取基准测试 | ⬜ | | |
+| 2.7 | 特征提取基准测试 | ✅ | 2026-08-26 | 5 特征对比：Fused_gate 最优 P@5=0.64/KNN=0.69 |
 
 ### 进度日志
 
@@ -201,6 +201,29 @@
     - Bitnami 镜像已从 docker.io/bitnami 迁移（docker.io/bitnami 与 quay.io/bitnami 标签不可用）→ 用官方 milvusdb/* 镜像
     - minio 默认 tag RELEASE.2023-03-20 已不存在 → 覆盖为 RELEASE.2023-09-04T19-57-37Z
     - Milvus 2.2 index 仅支持 L2/IP（不支持 COSINE）→ 用 IP（特征已 L2 归一化）；VARCHAR 字段需 max_length
+
+- [x] 2026-08-26：对比学习训练（阶段 2.5）
+  - 交付：src/artifact_scan/feature/train_contrastive.py（多视角 SimCLR + Center Loss + 投影头）
+  - 方法：同一文物 3 路特征（DINOv2/SigLIP/registers）作为 3 视角；InfoNCE 拉近同视角、推开跨样本；Center Loss 聚合同类（period 中心）
+  - 训练：493×768 → 投影 256 维；150 epoch，infoNCE+center 0.41
+  - 输出：data/features/contrastive/contrastive.npy（493×256）+ 模型
+  - 结论（负结果，如实记录）：特征级多视角投影对比在该数据上**不优于**预训练/融合特征
+    （P@5=0.24 / KNN=0.26，明显弱于融合 0.64/0.69）——投影有损、训练数据少、
+    3 路预训练特征已是强语义表征，跨视角对齐反而削弱 period 判别性。
+    后续若要用对比学习，建议改图像级 SimCLR（数据增强）或加大数据/模型。
+
+- [x] 2026-08-26：特征提取基准测试（阶段 2.7）
+  - 交付：src/artifact_scan/feature/benchmark.py（检索 P@K + KNN 分类评估）
+  - 指标：对 5 种特征，用 cosine（已归一化）做检索 P@5（period）+ KNN 分类 acc
+  - 结果（493 样本 / 12 类 period）：
+    | 特征 | dim | P@5 | KNN |
+    |------|-----|------|------|
+    | Fused_gate | 768 | 0.6426 | 0.6917 |
+    | SigLIP_pooler | 768 | 0.5903 | 0.6856 |
+    | DINOv2_CLS | 768 | 0.5067 | 0.5720 |
+    | Registers_GeM | 768 | 0.5051 | 0.5680 |
+    | Contrastive | 256 | 0.2434 | 0.2617 |
+  - 结论：融合特征（可学习门控）最优，SigLIP 次之，单路 DINOv2/registers 相近，对比特征当前最弱
 </details>
 
 ---

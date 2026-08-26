@@ -1,0 +1,5 @@
+outs:
+- md5: 57fa09f601cca3a7780f91d663193f7d
+  size: 504960
+  hash: md5
+  path: contrastive.npy

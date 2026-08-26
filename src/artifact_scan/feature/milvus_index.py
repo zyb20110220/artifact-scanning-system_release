@@ -50,7 +50,8 @@ def main(argv=None):
     feats = np.load(args.features).astype(np.float32)
     metas = load(args.meta)
     n, dim = feats.shape
-    logger.info("加载融合特征 %s（%s×%s）+ %s 条 meta", args.features, n, dim, len(metas))
+    logger.info("加载融合特征 %s（%s×%s）+ %s 条 meta",
+                args.features, n, dim, len(metas))
 
     # 连接（统一用新 MilvusClient）
     client = MilvusClient(uri="http://%s:%d" % (args.host, args.port))
@@ -63,7 +64,8 @@ def main(argv=None):
 
     # 建集合（schema：VARCHAR 主键 + 向量 + 标量）
     schema = CollectionSchema([
-        FieldSchema(name="id", dtype=DataType.VARCHAR, max_length=64, is_primary=True),
+        FieldSchema(name="id", dtype=DataType.VARCHAR,
+                    max_length=64, is_primary=True),
         FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=dim),
         FieldSchema(name="source", dtype=DataType.VARCHAR, max_length=64),
         FieldSchema(name="title", dtype=DataType.VARCHAR, max_length=512),
@@ -91,7 +93,8 @@ def main(argv=None):
         metric_type="IP",
         params={"M": 16, "efConstruction": 200},
     )
-    client.create_index(collection_name=args.collection, index_params=index_params)
+    client.create_index(collection_name=args.collection,
+                        index_params=index_params)
     logger.info("HNSW 索引已创建（IP）")
 
     # 加载集合并做检索验证

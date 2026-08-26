@@ -87,7 +87,8 @@ def extract_dataset(annotated_file, out_dir, model_name="dinov2-base",
             else:  # cls
                 f = model.extract_one(img_path)
         except Exception as exc:  # 图损坏等
-            logger.warning("[%s/%s] 跳过 %s（提取失败：%s）", i + 1, len(records), uid, exc)
+            logger.warning("[%s/%s] 跳过 %s（提取失败：%s）",
+                           i + 1, len(records), uid, exc)
             failed += 1
             continue
         if f is None:

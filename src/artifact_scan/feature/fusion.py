@@ -123,7 +123,8 @@ def train(feats, labels, epochs=80, lr=1e-3, batch=64, seed=0, ent_w=0.05):
     num_classes = int(labels.max()) + 1
     gate = FusionGating(len(feats), dim)
     clf = _Classifier(dim, num_classes)
-    opt = torch.optim.Adam(list(gate.parameters()) + list(clf.parameters()), lr=lr)
+    opt = torch.optim.Adam(list(gate.parameters()) +
+                           list(clf.parameters()), lr=lr)
     criterion = nn.CrossEntropyLoss()
 
     X = [torch.from_numpy(f) for f in feats]
@@ -190,8 +191,10 @@ def build_parser():
     p = argparse.ArgumentParser(
         description="特征融合（阶段 2.4：可学习注意力门控）",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    p.add_argument("--views", nargs="+", default=None, help="特征文件列表（缺省用 3 路默认）")
-    p.add_argument("--annotated", default=_ANNOTATED, help="标注数据（取 culture 标签）")
+    p.add_argument("--views", nargs="+", default=None,
+                   help="特征文件列表（缺省用 3 路默认）")
+    p.add_argument("--annotated", default=_ANNOTATED,
+                   help="标注数据（取 culture 标签）")
     p.add_argument("--meta", default=_META, help="特征 meta（记录顺序）")
     p.add_argument("--epochs", type=int, default=80, help="训练轮数")
     p.add_argument("--lr", type=float, default=1e-3, help="学习率")

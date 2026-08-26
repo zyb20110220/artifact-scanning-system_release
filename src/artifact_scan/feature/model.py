@@ -19,8 +19,10 @@ logger = logging.getLogger(__name__)
 #   dinov2-registers 序列 = [CLS, register..., patch...] → 偏移 1 + num_register = 5
 #   siglip vision 序列 = [CLS, patch...] → 偏移 1
 _MODEL_REGISTRY = {
-    "dinov2-base": ("facebook/dinov2-base", 768, "dinov2", 1),             # ViT-B/14
-    "dinov2-small": ("facebook/dinov2-small", 384, "dinov2", 1),           # ViT-S/14
+    # ViT-B/14
+    "dinov2-base": ("facebook/dinov2-base", 768, "dinov2", 1),
+    # ViT-S/14
+    "dinov2-small": ("facebook/dinov2-small", 384, "dinov2", 1),
     "dinov2-registers-base": ("facebook/dinov2-with-registers-base", 768, "dinov2", 5),
     "siglip-base": ("google/siglip-base-patch16-224", 768, "siglip", 1),
 }
@@ -42,7 +44,8 @@ class FeatureModel:
 
     def __init__(self, name=_DEFAULT_NAME, device="cpu", cache_dir=None):
         if name not in _MODEL_REGISTRY:
-            raise ValueError("未知模型 %r，可选：%s" % (name, ", ".join(_MODEL_REGISTRY)))
+            raise ValueError("未知模型 %r，可选：%s" %
+                             (name, ", ".join(_MODEL_REGISTRY)))
         self.name = name
         self.repo, self.dim, self.kind, self.patch_offset = _MODEL_REGISTRY[name]
         self.device = device
@@ -66,7 +69,8 @@ class FeatureModel:
         if not images:
             return None
         pil = [_load_img(i) for i in images]
-        inputs = self.processor(images=pil, return_tensors="pt").to(self.device)
+        inputs = self.processor(
+            images=pil, return_tensors="pt").to(self.device)
         with torch.no_grad():
             if self.kind == "siglip":
                 # SigLIP 用 vision 编码器的 CLS 池化向量
@@ -100,7 +104,8 @@ class FeatureModel:
             return None
         images = images if isinstance(images, (list, tuple)) else [images]
         pil = [_load_img(i) for i in images]
-        inputs = self.processor(images=pil, return_tensors="pt").to(self.device)
+        inputs = self.processor(
+            images=pil, return_tensors="pt").to(self.device)
         with torch.no_grad():
             patches = self._patches(inputs)
         feats = patches.mean(dim=1)  # 平均 patch token
@@ -117,7 +122,8 @@ class FeatureModel:
             return None
         images = images if isinstance(images, (list, tuple)) else [images]
         pil = [_load_img(i) for i in images]
-        inputs = self.processor(images=pil, return_tensors="pt").to(self.device)
+        inputs = self.processor(
+            images=pil, return_tensors="pt").to(self.device)
         with torch.no_grad():
             patches = self._patches(inputs)
         feats = _gem_pool(patches, p=p)
@@ -133,7 +139,8 @@ class FeatureModel:
             return None
         images = images if isinstance(images, (list, tuple)) else [images]
         pil = [_load_img(i) for i in images]
-        inputs = self.processor(images=pil, return_tensors="pt").to(self.device)
+        inputs = self.processor(
+            images=pil, return_tensors="pt").to(self.device)
         with torch.no_grad():
             patches = self._patches(inputs)
         return _l2_normalize(patches.cpu().numpy().reshape(-1, patches.shape[-1])) \

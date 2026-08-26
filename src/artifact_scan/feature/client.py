@@ -15,8 +15,10 @@ def build_parser():
     parser = argparse.ArgumentParser(description="gRPC 特征客户端（验证）")
     parser.add_argument("--port", type=int, default=50051, help="服务端口")
     parser.add_argument("--host", default="127.0.0.1", help="服务地址")
-    parser.add_argument("--image", action="append", default=[], help="图像文件路径（可多次）")
-    parser.add_argument("--url", action="append", default=[], help="图像 URL（可多次）")
+    parser.add_argument("--image", action="append",
+                        default=[], help="图像文件路径（可多次）")
+    parser.add_argument("--url", action="append",
+                        default=[], help="图像 URL（可多次）")
     parser.add_argument("--model", default="dinov2-base", help="模型名")
     return parser
 

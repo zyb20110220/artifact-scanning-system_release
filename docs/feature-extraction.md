@@ -97,3 +97,22 @@ python -m grpc_tools.protoc -I src/artifact_scan/feature/proto `
   src/artifact_scan/feature/proto/feature.proto
 ```
 > 生成后将 `feature_pb2_grpc.py` 中 `import feature_pb2` 改为 `from . import feature_pb2`（包内导入）。
+
+## 对比学习（阶段 2.5）
+
+`train_contrastive.py` 做**多视角对比学习**（SimCLR + Center Loss）：
+```powershell
+python -m artifact_scan.feature.train_contrastive --epochs 150 --proj 256
+```
+- 同一文物 3 路特征作为 3 视角；InfoNCE 拉近同视角、推开跨样本；Center Loss 聚合同类（period）
+- 输出 `data/features/contrastive/contrastive.npy`（493×256）
+- ⚠️ **实验结论**：特征级投影对比在此数据上不优于预训练/融合特征（P@5 0.24 vs 融合 0.64）。
+  建议改用图像级 SimCLR（数据增强）或加大数据。
+
+## 特征基准（阶段 2.7）
+
+`benchmark.py` 对比各特征检索 P@5（period）与 KNN 分类：
+```powershell
+python -m artifact_scan.feature.benchmark --k 5
+```
+结果（见 PROGRESS）：**融合特征最优**（P@5 0.64 / KNN 0.69），SigLIP 次之，对比特征最弱。
