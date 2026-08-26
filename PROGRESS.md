@@ -238,7 +238,7 @@
 | 3.2 | Cross-Encoder 精排模型训练 | ✅ | 2026-08-26 | 精排器已实现；首版未超初排（0.23 vs 0.25），待多路候选+难负例调优 |
 | 3.3 | 图谱增强重排 | ⬜ | | |
 | 3.4 | 检索编排服务（多路 → 精排 → 图谱 → Top-K） | ✅ | 2026-08-26 | 编排链路跑通；图谱钩子已预留(待3.3接入) |
-| 3.5 | 检索 A/B 评估框架 | ⬜ | | |
+| 3.5 | 检索 A/B 评估框架 | ✅ | 2026-08-26 | 6 策略对比；culture 下 SigLIP 最优 P@5=0.31 |
 | 3.6 | 检索精度达到 culture P@5 ≥ 0.60 | ⬜ | | 里程碑 |
 
 ### 进度日志
@@ -271,6 +271,21 @@
   - 流程：query 各路特征 → 多路召回(RRF, cand) → 图谱增强(RerankHook 可插拔占位) → Cross-Encoder 精排(fused 打分) → Top-K
   - 验证：query "Nathaniel Hurd" 编排 Top-K 全为人像（Isabella Brant / Nathaniel Olds / Portrait of a Woman 等）
   - 图谱钩子：RerankHook.apply 为占位（3.3 完成后接入 Neo4j 重排）
+
+- [x] 2026-08-26：检索 A/B 评估框架（阶段 3.5）
+  - 交付：src/artifact_scan/feature/ab_eval.py（多策略 P@K / R@K / MRR 对比）
+  - 策略：DINOv2 / SigLIP / Registers / Fused 单路 + 多路 RRF + 多路 RRF+精排
+  - 结果（culture，topk=5，493 样本 / 80 类）：
+    | 策略 | P@5 | R@5 | MRR |
+    |------|-----|-----|-----|
+    | SigLIP 单路 | 0.314 | 0.056 | 0.525 |
+    | 多路 RRF | 0.281 | 0.054 | 0.488 |
+    | DINOv2 单路 | 0.257 | 0.049 | 0.472 |
+    | Fused 单路 | 0.251 | 0.046 | 0.456 |
+    | Registers 单路 | 0.247 | 0.043 | 0.465 |
+    | 多路 RRF+精排 | 0.245 | 0.041 | 0.426 |
+  - 关键洞察：culture 下 SigLIP 单路最优（与 period 下"多路/融合最优"不同）——CLIP 类对语义/文化更敏感；
+    精排当前反而降低（与 3.2 一致）。culture P@5 仍未达 0.60，属高难目标，后续需针对 culture 优化（难负例/多路拼接/图谱）
 </details>
 
 ---
