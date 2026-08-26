@@ -1,0 +1,5 @@
+outs:
+- md5: 43d6e948ec7628d43309d8097e7f2681
+  size: 1078751
+  hash: md5
+  path: contrastive_model.pt
