@@ -146,7 +146,7 @@
 | 2.3 | DINOv2-registers 局部特征提取 | ✅ | 2026-08-25 | patch tokens + GeM 池化；特征 493×768 |
 | 2.4 | 特征融合模块（可学习注意力门控） | ✅ | 2026-08-25 | 融合 493×768，acc~76%（period） |
 | 2.5 | 对比学习训练（SimCLR + Center Loss） | ⬜ | | 解决数据稀疏问题 |
-| 2.6 | Milvus 向量库部署与索引构建 | ⬜ | | |
+| 2.6 | Milvus 向量库部署与索引构建 | ✅ | 2026-08-25 | standalone 3 组件 Running；融合特征 HNSW 索引，检索语义相似 |
 | 2.7 | 特征提取基准测试 | ⬜ | | |
 
 ### 进度日志
@@ -187,6 +187,20 @@
   - 融合：3 路（dinov2/siglip/registers）→ data/features/fused/fusion.npy（493×768，L2 归一化）+ gate_weights.npy + gate.pt
   - 验证：493 样本 / 11 类 period，acc ~76%（随机 ~9%）；门控权重 ≈ [0.23, 0.00, 0.77]（dinov2 + registers 主导）
   - 踩坑：softmax 门控易塌缩到单视图（[0,0,1]）→ 加门控熵正则 + 用更粗的 period 标签（culture 79 类过细）
+
+- [x] 2026-08-25：Milvus 向量库部署与索引构建（阶段 2.6）
+  - 交付：deploy/milvus/{values,install,import-images}.ps1 + offline/（4 个离线镜像 tar）；docs/milvus.md；src/artifact_scan/feature/milvus_index.py
+  - 部署：官方 milvus/milvus 4.0.31（app 2.2.13）standalone；milvus-standalone/milvus-etcd-0/milvus-minio 全 Running；gRPC 19530
+  - 镜像离线化：docker save 到 deploy/milvus/offline/（milvus/etcd/minio/config-tool 4 个 tar，~450MB）；import-images 优先离线加载，逐镜像导入 3 节点
+  - 索引：src/artifact_scan/feature/milvus_index.py 用融合特征（493×768）建集合 artifact_fusion（VARCHAR 主键 + 向量 + source/title）+ HNSW(IP) 索引
+  - 检索验证：Top-1 均自身（score 1.0），后续召回语义相似作品（人像→人像、场景→场景）
+  - 踩坑（较多）：
+    - bitnami/milvus 16.0.1 为 cluster-only（无 standalone 开关），8GB 节点放不下 → 改用官方 chart
+    - 官方 chart 顶层为 cluster:/standalone:，无 mode 字段；正确开关 = cluster.enabled=false + standalone.enabled=true
+    - etcd 多副本残留数据（cluster 部署遗留 cluster-version 3.6）导致 invalid downgrade 崩溃 → 删除并回收 Milvus 命名空间 PVC/PV 后重装
+    - Bitnami 镜像已从 docker.io/bitnami 迁移（docker.io/bitnami 与 quay.io/bitnami 标签不可用）→ 用官方 milvusdb/* 镜像
+    - minio 默认 tag RELEASE.2023-03-20 已不存在 → 覆盖为 RELEASE.2023-09-04T19-57-37Z
+    - Milvus 2.2 index 仅支持 L2/IP（不支持 COSINE）→ 用 IP（特征已 L2 归一化）；VARCHAR 字段需 max_length
 </details>
 
 ---

@@ -1,0 +1,65 @@
+# ============================================================
+# values.yaml —— Milvus 向量库（阶段 2.6）
+# 官方 milvus/milvus 4.0.31 (app 2.2.13) standalone 模式
+# 正确开关：cluster.enabled=false + standalone.enabled=true
+# 依赖：milvusdb/etcd + minio（standalone 必需；pulsar/attu 禁用）
+# 资源：开发集群 8GB/节点，统一收紧
+# ============================================================
+
+# 关闭 cluster 模式，启用 standalone
+cluster:
+  enabled: false
+
+standalone:
+  enabled: true
+  image:
+    repository: "milvusdb/milvus"
+    tag: "v2.2.13"
+  persistence:
+    enabled: true
+    size: 5Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 2Gi
+
+# standalone 不需要 pulsar（消息队列）与 Attu UI
+pulsar:
+  enabled: false
+attu:
+  enabled: false
+
+# etcd：元数据存储（standalone 用单副本）
+etcd:
+  replicaCount: 1
+  image:
+    repository: "milvusdb/etcd"
+    tag: "3.5.5-r2"
+  persistence:
+    enabled: true
+    size: 2Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+# MinIO：对象存储（standalone 必需），单节点模式
+minio:
+  mode: standalone
+  image:
+    repository: "minio/minio"
+    tag: "RELEASE.2023-09-04T19-57-37Z"
+  persistence:
+    enabled: true
+    size: 5Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
