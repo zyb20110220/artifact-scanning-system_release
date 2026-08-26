@@ -237,7 +237,7 @@
 | 3.1 | 多路召回实现（DINOv2 + SigLIP + 局部特征） | ✅ | 2026-08-26 | 4 路 RRF 融合召回；period P@5=0.77 |
 | 3.2 | Cross-Encoder 精排模型训练 | ✅ | 2026-08-26 | 精排器已实现；首版未超初排（0.23 vs 0.25），待多路候选+难负例调优 |
 | 3.3 | 图谱增强重排 | ⬜ | | |
-| 3.4 | 检索编排服务（多路 → 精排 → 图谱 → Top-K） | ⬜ | | |
+| 3.4 | 检索编排服务（多路 → 精排 → 图谱 → Top-K） | ✅ | 2026-08-26 | 编排链路跑通；图谱钩子已预留(待3.3接入) |
 | 3.5 | 检索 A/B 评估框架 | ⬜ | | |
 | 3.6 | 检索精度达到 culture P@5 ≥ 0.60 | ⬜ | | 里程碑 |
 
@@ -264,6 +264,13 @@
     2) 训练标签用 period 但评估用 culture（期类≠文化，对应不一）
     3) 负例为随机异类，非难负例，判别力弱
     后续优化：候选池改用多路召回（RRF）+ 训练标签用 culture + 难负例挖掘 + 多路特征拼接输入
+
+- [x] 2026-08-26：检索编排服务（阶段 3.4）
+  - 交付：src/artifact_scan/feature/orchestrator.py（多路召回→精排→图谱钩子→Top-K）
+  - rerank.py 增加 --save / load_reranker（保存/加载精排模型）
+  - 流程：query 各路特征 → 多路召回(RRF, cand) → 图谱增强(RerankHook 可插拔占位) → Cross-Encoder 精排(fused 打分) → Top-K
+  - 验证：query "Nathaniel Hurd" 编排 Top-K 全为人像（Isabella Brant / Nathaniel Olds / Portrait of a Woman 等）
+  - 图谱钩子：RerankHook.apply 为占位（3.3 完成后接入 Neo4j 重排）
 </details>
 
 ---

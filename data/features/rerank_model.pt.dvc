@@ -1,0 +1,5 @@
+outs:
+- md5: 64aa48d126d2b598bb7099b574d988a2
+  size: 1577551
+  hash: md5
+  path: rerank_model.pt

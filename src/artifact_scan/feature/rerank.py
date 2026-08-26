@@ -144,6 +144,8 @@ def main(argv=None):
     ap.add_argument("--topk", type=int, default=5)
     ap.add_argument("--pos", type=int, default=2)
     ap.add_argument("--neg", type=int, default=4)
+    ap.add_argument("--save", default="data/features/rerank_model.pt",
+                    help="训练后保存精排模型")
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
@@ -159,10 +161,26 @@ def main(argv=None):
     logger.info("构造训练对 %s 个（期类）", len(pairs))
     model = train(feats, pairs, epochs=args.epochs)
 
+    # 保存精排模型（供 3.4 编排服务加载）
+    import os
+    os.makedirs(os.path.dirname(args.save), exist_ok=True)
+    torch.save({"state": model.state_dict(), "dim": feats.shape[1]}, args.save)
+    logger.info("精排模型已保存：%s", args.save)
+
     # 评估 cosine vs rerank（culture P@5）
     p, pr = rerank_candidates(model, feats, topk=args.topk, cand=args.cand)
     print("culture P@%d：cosine 初排 = %.4f   Cross-Encoder 精排 = %.4f"
           % (args.topk, p, pr))
+
+
+def load_reranker(path="data/features/rerank_model.pt"):
+    """加载训练好的精排模型，返回 (Reranker, dim)。"""
+    ckpt = torch.load(path, map_location="cpu", weights_only=False)
+    dim = ckpt["dim"]
+    model = Reranker(dim)
+    model.load_state_dict(ckpt["state"])
+    model.eval()
+    return model, dim
 
 
 if __name__ == "__main__":
