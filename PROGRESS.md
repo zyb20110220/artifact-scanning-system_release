@@ -352,7 +352,7 @@
 
 | # | 任务 | 状态 | 完成日期 | 备注 |
 |---|------|------|---------|------|
-| 5.1 | Ollama 本地部署 + Qwen2.5-VL 量化 | ✅ | 2026-08-27 | Ollama 部署+离线推理可用（qwen2.5:1.5b）；Qwen2.5-VL 待 GGUF 端解决 |
+| 5.1 | Ollama 本地部署 + Qwen2.5-VL 量化 | ✅ | 2026-08-27 | Ollama 部署+离线推理可用（qwen2.5:1.5b）；Qwen2.5-VL 已由 GGUF 创建（推理因 WSL2 内存受限） |
 | 5.2 | 考古 Prompt 模板库（10+ 场景） | ✅ | 2026-08-26 | 10+ 场景模板（断代/文化/材质/器型/真伪等） |
 | 5.3 | 证据链构建引擎 | ✅ | 2026-08-26 | 检索+图谱+标注整合为证据链 |
 | 5.4 | 结构化报告生成 | ✅ | 2026-08-26 | JSON 报告（结论+置信度+证据链），便于前端渲染 |
@@ -389,8 +389,23 @@
   - 踩坑：
     - registry.ollama.ai 拉取：pod 内无代理失败 → 加 HTTP_PROXY=host.k3d.internal:7897；但 Ollama 对 registry.ollama.ai 经代理仍 502（连接失败）
     - 本机容器内 HTTP_PROXY=127.0.0.1 指向容器自身 → 改 host.docker.internal:7897 后 qwen2.5:1.5b 拉取成功
-    - qwen2.5-vl:3b（视觉模型，GGUF+mmproj 大 blob）经注册表拉取快速失败；HF `Qwen/Qwen2.5-VL-3B-Instruct-GGUF` 仓库 401 不存在 → Qwen2.5-VL 量化暂未完成，待社区 GGUF / 网络修复
-  - 结论：Ollama 本地部署与离线推理能力已验证可用（qwen2.5:1.5b）；Qwen2.5-VL 量化需后续解决（HF 社区 GGUF + mmproj 构造 Modelfile，或云端 API）
+    - qwen2.5-vl:3b / qwen2.5vl:3b（视觉模型，GGUF+mmproj 大 blob ~3GB）经注册表拉取均快速失败（0.4-2.1s，无下载）
+  - **方案2 已完成**（2026-08-27）：绕过 registry.ollama.ai，手动从 HF 下载 GGUF 构造模型
+    - 仓库：unsloth/Qwen2.5-VL-3B-Instruct-GGUF（79824 下载；`Invoke-RestMethod` 走代理可访问 HF API）
+    - 下载：`curl -L`（`Invoke-WebRequest` 不跟随 302）主权重 `Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf` 1.84GB + mmproj `mmproj-F16.gguf` 1.28GB；断点续传 `-C -` 补齐被截断的 846MB
+    - Modelfile：双 `FROM`（主权重 + mmproj）+ 考古 SYSTEM 提示词；置于 ollama-models/gguf-download/（容器 bind 挂载 /root/.ollama）
+    - `ollama create qwen2.5-vl:3b`：解析 GGUF → 校验转换 → 写 manifest → **success**；模型注册 3.3GB（架构 qwen2vl，3.1B，Q4_K_M，capabilities=completion+vision，Projector=clip 668.68M）
+  - 结论：Ollama 本地部署与离线推理能力已验证可用（qwen2.5:1.5b，集群 26.2s / 本机 13.6s）；
+    Qwen2.5-VL **模型已成功创建**，但**推理时报 OOM**（`read error: Cannot allocate memory`）：WSL2 仅剩 2.4GiB 可用，
+    k3d 集群 3 节点占用约 5GB（agent-1 2.17G/server-0 1.9G/agent-0 0.88G），加载 3B 模型+mmproj 需 ~3.1GB 放不下
+  - **传图断代推理验证通过**（2026-08-27，方案A）：
+    - 内存解法：停 `k3d cluster stop artifact-scanning` 释放约 5GB → WSL2 可用升至 6.1GiB → 模型加载无 OOM
+    - 视觉验证：MET 文物图 `Bowl Emulating Chinese Stoneware`（缩至 1024px）→ 149.5s 输出断代分析，
+      识别为**青花碗 / 中国瓷器 / 明清时期**，并注意到碗底书法 → 证明 vision（mmproj）与考古提示词均正常
+    - 正式共存方案：新建 `%USERPROFILE%\.wslconfig` `[wsl2] memory=12GB`（默认 50% 内存=7.6GiB 不够），
+      集群(5G)+模型(3.1G)≈8.1G 可共存；下次 `wsl --shutdown` 重启 WSL 后生效
+    - 恢复：`k3d cluster start artifact-scanning` 已恢复，节点 Ready，核心服务（data/minio、data/postgresql、milvus、llm/ollama、monitoring）全部 Running
+  - 后续：将来完整运行需在 `.wslconfig` 生效（WSL 重启）后同时承载集群 + qwen2.5-vl:3b；或将 LLM 推理改为云端 API 以降低本机内存
 </details>
 
 ---
