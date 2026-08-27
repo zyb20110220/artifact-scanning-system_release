@@ -340,9 +340,9 @@
 | # | 任务 | 状态 | 完成日期 | 备注 |
 |---|------|------|---------|------|
 | 5.1 | Ollama 本地部署 + Qwen2.5-VL 量化 | ⬜ | | 离线可用 |
-| 5.2 | 考古 Prompt 模板库（10+ 场景） | ⬜ | | |
-| 5.3 | 证据链构建引擎 | ⬜ | | |
-| 5.4 | 结构化报告生成 | ⬜ | | JSON 输出便于前端渲染 |
+| 5.2 | 考古 Prompt 模板库（10+ 场景） | ✅ | 2026-08-26 | 10+ 场景模板（断代/文化/材质/器型/真伪等） |
+| 5.3 | 证据链构建引擎 | ✅ | 2026-08-26 | 检索+图谱+标注整合为证据链 |
+| 5.4 | 结构化报告生成 | ✅ | 2026-08-26 | JSON 报告（结论+置信度+证据链），便于前端渲染 |
 | 5.5 | LoRA 微调数据准备（2000+ 条） | ⬜ | | |
 | 5.6 | LoRA 微调训练 → 部署 | ⬜ | | |
 | 5.7 | LLM 输出质量评估（考古专家盲评） | ⬜ | | |
@@ -352,7 +352,21 @@
 <details>
 <summary><b>LLM 集成</b></summary>
 
-- [ ] 待开始
+- [x] 2026-08-26：考古 Prompt 模板库（阶段 5.2）
+  - 交付：src/artifact_scan/prompts.py（10+ 场景模板：断代分析/文化来源/材质鉴定/器型用途/纹饰象征/真伪/工艺/报告汇总/检索解释/图谱证据）
+  - 模板含占位符（title/source/visual/periods/cultures/materials/evidence 等），供 5.4 报告与后续 5.1 LLM 调用
+
+- [x] 2026-08-26：证据链构建引擎（阶段 5.3）
+  - 交付：src/artifact_scan/report.py（build_evidence）
+  - 整合：标注（culture/period/material/form/decor/date/medium）+ 相似文物（Milvus 融合特征 Top-K）+ 图谱证据（culture_trace/period_infer）
+  - 输出结构化证据链 evidence_chain
+
+- [x] 2026-08-26：结构化报告生成（阶段 5.4）
+  - 交付：src/artifact_scan/report.py（build_report）
+  - JSON 报告：conclusion（period/culture/materials/forms/date/confidence）+ evidence_chain
+  - 置信度基于证据一致性（period/culture 证据 + 相似文物数）
+  - 示例：id=94979 → period 近代早期 / culture 美国 / confidence+证据链（相似人像 + 图谱文化溯源）
+  - 硬件说明：5.1 Ollama/Qwen-VL 部署、5.5/5.6（LoRA 训练）需 NVIDIA GPU（本机无）→ 后续用云端 API 或 Ollama CPU 小模型 / 标注后置
 </details>
 
 ---
