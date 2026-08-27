@@ -127,7 +127,8 @@ def collate_fn(batch, pad_token_id):
     max_patches = max(b["pixel_values"].shape[1] for b in batch)
     pixel_values = torch.stack([
         torch.nn.functional.pad(b["pixel_values"],
-                                (0, 0, 0, max_patches - b["pixel_values"].shape[1]),
+                                (0, 0, 0, max_patches -
+                                 b["pixel_values"].shape[1]),
                                 value=0)
         for b in batch])
     image_grid_thw = torch.cat([b["image_grid_thw"] for b in batch], dim=0)
@@ -150,7 +151,8 @@ def train(samples, processor, model, out, epochs=3, lr=2e-4, batch=1, accum=8,
     )
     trainer = Trainer(
         model=model, args=args, train_dataset=ds,
-        data_collator=lambda b: collate_fn(b, processor.tokenizer.pad_token_id),
+        data_collator=lambda b: collate_fn(
+            b, processor.tokenizer.pad_token_id),
     )
     trainer.train()
     model.save_pretrained(os.path.join(out, "adapter"))
@@ -181,7 +183,8 @@ def main(argv=None):
     logger.info("载入 %d 条训练样本", len(samples))
     processor = make_processor(args.base)
     model = make_model(args.base, qlora=not args.no_qlora)
-    model = add_lora(model, r=args.r, alpha=args.alpha, qlora=not args.no_qlora)
+    model = add_lora(model, r=args.r, alpha=args.alpha,
+                     qlora=not args.no_qlora)
     model.config.use_cache = False
     train(samples, processor, model, args.out, epochs=args.epochs, lr=args.lr,
           batch=args.batch, accum=args.accum, max_len=args.max_len)

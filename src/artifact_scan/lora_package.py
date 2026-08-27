@@ -80,7 +80,8 @@ def main(argv=None):
     args = ap.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(levelname)s %(message)s")
-    res = package(args.src, args.out, zip_out=not args.no_zip, rewrite=not args.no_rewrite)
+    res = package(args.src, args.out, zip_out=not args.no_zip,
+                  rewrite=not args.no_rewrite)
     print("打包结果：%s" % res)
 
 
