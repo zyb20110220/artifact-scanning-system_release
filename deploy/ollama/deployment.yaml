@@ -1,0 +1,78 @@
+# ============================================================
+# deployment.yaml —— Ollama（阶段 5.1）
+# CPU-only 运行（本集群无 GPU），PVC 持久化模型缓存，port 11434。
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: llm
+  labels:
+    app: ollama
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      containers:
+        - name: ollama
+          image: docker.io/ollama/ollama:latest
+          ports:
+            - name: api
+              containerPort: 11434
+          env:
+            - name: OLLAMA_HOST
+              value: "0.0.0.0"
+            - name: OLLAMA_KEEP_ALIVE
+              value: "5m"
+            # 经宿主代理访问 registry.ollama.ai（离线拉取模型）
+            - name: HTTP_PROXY
+              value: "http://host.k3d.internal:7897"
+            - name: HTTPS_PROXY
+              value: "http://host.k3d.internal:7897"
+            - name: NO_PROXY
+              value: "localhost,127.0.0.1,host.k3d.internal"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              memory: 6Gi
+          volumeMounts:
+            - name: models
+              mountPath: /root/.ollama
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: ollama-models
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: llm
+spec:
+  selector:
+    app: ollama
+  type: ClusterIP
+  ports:
+    - name: api
+      port: 11434
+      targetPort: 11434
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-models
+  namespace: llm
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 12Gi
+  storageClassName: local-path

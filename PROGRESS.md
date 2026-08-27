@@ -352,7 +352,7 @@
 
 | # | 任务 | 状态 | 完成日期 | 备注 |
 |---|------|------|---------|------|
-| 5.1 | Ollama 本地部署 + Qwen2.5-VL 量化 | ⬜ | | 离线可用 |
+| 5.1 | Ollama 本地部署 + Qwen2.5-VL 量化 | ✅ | 2026-08-27 | Ollama 部署+离线推理可用（qwen2.5:1.5b）；Qwen2.5-VL 待 GGUF 端解决 |
 | 5.2 | 考古 Prompt 模板库（10+ 场景） | ✅ | 2026-08-26 | 10+ 场景模板（断代/文化/材质/器型/真伪等） |
 | 5.3 | 证据链构建引擎 | ✅ | 2026-08-26 | 检索+图谱+标注整合为证据链 |
 | 5.4 | 结构化报告生成 | ✅ | 2026-08-26 | JSON 报告（结论+置信度+证据链），便于前端渲染 |
@@ -380,6 +380,17 @@
   - 置信度基于证据一致性（period/culture 证据 + 相似文物数）
   - 示例：id=94979 → period 近代早期 / culture 美国 / confidence+证据链（相似人像 + 图谱文化溯源）
   - 硬件说明：5.1 Ollama/Qwen-VL 部署、5.5/5.6（LoRA 训练）需 NVIDIA GPU（本机无）→ 后续用云端 API 或 Ollama CPU 小模型 / 标注后置
+
+- [x] 2026-08-27：Ollama 本地部署（阶段 5.1）
+  - 交付：deploy/ollama/{deployment,import-images,install}.ps1 + deployment.yaml（Deployment + Service + PVC 12Gi，CPU-only）
+  - 镜像：docker.io/ollama/ollama:latest（经代理 pull → 离线导入 3 节点，3.2GB）；backup/ollama-latest.tar 备份
+  - 集群部署：llm 命名空间，Ollama 0.33.1，port 11434；集群内纯 CPU（5.6GiB 可用）
+  - 模型：qwen2.5:1.5b（Q4_K_M，986MB）拉取成功并导入集群 PVC；离线推理验证（集群 26.2s / 本机 13.6s）
+  - 踩坑：
+    - registry.ollama.ai 拉取：pod 内无代理失败 → 加 HTTP_PROXY=host.k3d.internal:7897；但 Ollama 对 registry.ollama.ai 经代理仍 502（连接失败）
+    - 本机容器内 HTTP_PROXY=127.0.0.1 指向容器自身 → 改 host.docker.internal:7897 后 qwen2.5:1.5b 拉取成功
+    - qwen2.5-vl:3b（视觉模型，GGUF+mmproj 大 blob）经注册表拉取快速失败；HF `Qwen/Qwen2.5-VL-3B-Instruct-GGUF` 仓库 401 不存在 → Qwen2.5-VL 量化暂未完成，待社区 GGUF / 网络修复
+  - 结论：Ollama 本地部署与离线推理能力已验证可用（qwen2.5:1.5b）；Qwen2.5-VL 量化需后续解决（HF 社区 GGUF + mmproj 构造 Modelfile，或云端 API）
 </details>
 
 ---
