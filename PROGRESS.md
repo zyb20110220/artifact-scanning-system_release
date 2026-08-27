@@ -441,11 +441,11 @@
 
 | # | 任务 | 状态 | 完成日期 | 备注 |
 |---|------|------|---------|------|
-| 6.1 | Next.js 前端框架搭建 | ⬜ | | |
-| 6.2 | 图片上传 + 实时检索体验 | ⬜ | | |
+| 6.1 | 前端框架搭建 | ✅ | 2026-08-27 | **改选** FastAPI + 原生 Web 前端（apple-design 风格），替代原 Next.js（CPU 环境、贴合网页动效、免 Node 构建） |
+| 6.2 | 图片上传 + 实时检索体验 | ✅ | 2026-08-27 | 拖拽/点击上传 → POST /api/analyze → 结论/分析/相似/图谱 |
 | 6.3 | 检索结果画廊 + 详情面板 | ⬜ | | |
-| 6.4 | D3.js 证据链交互式网络图 | ⬜ | | |
-| 6.5 | 断代报告渲染（结构化 JSON → 可视化） | ⬜ | | |
+| 6.4 | D3.js 证据链交互式网络图 | ⬜ | | 当前为 SVG 径向示意，后续可升级 D3 |
+| 6.5 | 断代报告渲染（结构化 JSON → 可视化） | ✅ | 2026-08-27 | 结论卡（年代/文化/置信度）+ LLM 分析 + 相似列表 |
 | 6.6 | 时间轴 / 地图可视化 | ⬜ | | |
 | 6.7 | 移动端适配 | ⬜ | | |
 
@@ -454,7 +454,52 @@
 <details>
 <summary><b>前端与应用</b></summary>
 
-- [ ] 待开始
+- [x] 2026-08-27：前端框架 + 首版 Demo（阶段 6 首增量，apple-design 风格）
+  - **技术选型**：FastAPI + 原生 Web 前端（替代原 Next.js），参考 emilkowalski skills/apple-design（WWDC 流体交互原理）。
+    - 理由：网页动效/材质需精细控制（Gradio 受限）；免 Node 构建链，贴合 CPU-only 环境。
+  - 后端：src/artifact_scan/api.py（FastAPI）
+    - GET /api/health：返回 ollama/milvus/neo4j 三服务状态
+    - POST /api/analyze：上传文物图 → LLM(qwen2.5-vl:3b) 断代分析 + Milvus 多路召回相似 + Neo4j 图谱证据 → JSON（conclusion/llm_analysis/similar/graph/services/degraded）
+    - 服务懒加载 + try/except，不可用时降级并在 services/degraded 标注
+  - 前端：frontend/{index.html,styles.css,app.js}
+    - apple-design：系统字体光学排印、半透明材质(toolbar backdrop-filter)、负字距标题、ease-out 弹簧、按压 scale(.97)、reduced-motion 降级
+    - 交互：拖拽/点击上传、检测服务、结论卡(年代/文化/置信度)、LLM 分析、相似列表、SVG 证据链网络图
+  - 验证：uvicorn 启动成功；`/` 与 styles.css/app.js 均 200；/api/health 正常
+  - **全链路跑通（2026-08-27）**：上传 MET 青花碗图 → 前端预览 + 结论(年代=明代/文化=青花瓷器/置信度 0.95) + 智能分析 + 相似文物5件 + 证据链图谱(节点/边)；analyze 返回 degraded=false，services ollama/milvus/neo4j 全 up
+  - 环境修复：
+    - LLM 内存：WSL2 默认 7.6Gi 不足以同时跑集群(5G)+模型(3.1G) → 新建 `%USERPROFILE%\.wslconfig` memory=12GB 并 `wsl --shutdown` 重启 → WSL2 11Gi/可用 8.4Gi，模型正常加载
+    - kubectl 连通：WSL 重启后 k3d API 宿主机端口失效 → `k3d kubeconfig merge` + 将 k3d cluster server 设为 `127.0.0.1:64052` + `docker restart k3d-artifact-scanning-serverlb` 恢复
+    - 端口转发：`kubectl port-forward svc/milvus -n milvus 19530` + `svc/neo4j -n neo4j 7687`
+    - ollama-local 容器 WSL 重启后需重建（`docker run -d --name ollama-local -p 11435:11434 -v ollama-models:/root/.ollama ollama/ollama:latest`）
+  - 环境：需 `pip install fastapi python-multipart`；启动 `$env:PYTHONPATH="src"; python -m uvicorn artifact_scan.api:app --port 8000`
+- [x] 2026-08-27：前端全部重写 —— 放弃 apple-design，改「文博典藏」风格
+  - **视觉语言**：暖纸底色(#f7f1e6) + 青铜金(#8a6a3b) + 印泥红(#9c3d2e)，衬线排印(Noto Serif SC/宋体)，装裱双线框、印章 logo、◆ 纹饰分隔、巨型「鉴」字水印、宣纸噪点(feTurbulence)
+  - 暗色模式：夜馆主题（墨黑底 + 鎏金铜），prefers-color-scheme 自动切换
+  - 交互保留：拖拽/点击上传、骨架屏 shimmer、spinner 鉴定态、staggered reveal、耗时统计、focus-visible、reduced-motion
+  - 细节：置信度自动 0~1 → 百分比；LLM 返回 JSON 自动转键值卡；图谱节点青铜/印泥双色
+  - 验证：浅色/暗色截图确认；上传图全链路复测通过（结论+相似+图谱+服务 3/3）
+  - **Bug 修复（同日）**：未上传时即显示"正在鉴定"——因 `.dz-busy{display:flex}` 覆盖 `hidden` 属性默认隐藏 → 全局 `[hidden]{display:none!important}`；资源版本号升 v=3
+  - **后端加固（同日）**：/api/health 的 Milvus/Neo4j 探测补 timeout（3s/5s），避免隧道故障时"检测服务"按钮无限挂起；期间发现并重建了失效的 milvus/neo4j kubectl port-forward
+- [x] 2026-08-27：证据链图谱重构（美化 + 完善）
+  - **后端 `_graph_evidence`**：查询从仅 HAS_CULTURE 扩展为 5 类关系（文化/时期/材料/器型/纹饰），真实数据验证 3 样本 → 22 节点/21 边
+  - **前端 `renderGraph` 重绘**：三层径向布局（中心"待鉴定文物"印章 → 相似文物圆点 → 证据实体圆角卡），虚线线索 + 分色弧形边（带箭头 marker），节点 hover 显示完整标题（`<title>`），动态图例（按实际出现的边类型）
+  - 视觉：证据类型色板（文化绿/时期黛蓝/材料赭/器型青/纹饰胭脂），浅色+暗色双主题适配
+  - 验证：模拟 UI 截图确认；真实数据查询产出正确；资源版本 v=4
+  - **修复（同日）**：图谱顶部/底部节点被裁切（外圈半径超出 viewBox 430 高度）→ 画布扩至 640×470，外圈半径 228→205、内圈 118→104，全部节点落回画布内；v=5
+  - **智能分析报告化（同日）**：提示词改为"资深鉴定专家出具完整报告"（五个小标题分段 + 每部分给判断依据），num_predict 300→800；新增 `_expand_llm_report`（LLM 仅回 JSON 时展开为【年代】【文化归属】【类型】【纹饰与风格】【真伪】【保存状况】【置信度】文字报告）；前端【】标题行青铜色高亮；v=6
+  - **围栏 JSON 修复（同日）**：模型偶发返回 ```json 代码围栏包裹的 JSON 导致又显示 JSON → 后端 `_strip_code_fence` + 前端 `formatAnalysis` 均先剥离围栏再判断，围栏 JSON 也能展开为报告；v=7
+  - **完整报告化（同日）**：报告要求"完整 + 细节 + 推断过程"：
+    - 提示词强化：≥400 字、五个小标题、每部分给判断依据、正文穿插推理步骤；num_predict 800→1400、temperature 0.3
+    - `_ensure_report_depth`：输出过短（<200 字，如仅 JSON）时追加一次调用（≥500 字详细报告，不要 JSON）——实测 188s 生成 920 字分节报告
+    - `_evidence_summary`：用真实检索/图谱结果追加【相似比对】（Top5 文物+得分）与【证据链】（关系统计+关联要素），数据驱动支撑推断
+  - **排版优化（同日）**：智能分析独占整行（报告最长），相似文物 + 证据链图谱改为 1fr:1.5fr 并排等高卡片；骨架屏同步（结论/报告/双列）；报告支持 markdown 标题（###、一、）与 **加粗** 渲染；v=8
+  - **后端并发修复（同日）**：长报告生成期间事件循环被同步调用阻塞（页面/health 全部卡死）→ `analyze` 内 LLM/特征/检索/图谱调用全部 `run_in_threadpool` 化，分析期间页面与健康检查保持可访问
+  - **Bug 修复（同日）**：
+    - spinner 不旋转：根因是 styles.css 两处损坏（`.graph-canvas` 块被合并成 `min-hwrap`、`.lg-decoration` 行截断残留旧规则），浏览器解析时丢弃全部 @keyframes → 修复后 4 个 keyframes 全部恢复，实测 transform 矩阵持续变化（旋转正常）
+    - 预览后"将文物图片置于此处"不消失：`setState` 增加"idle 且有预览时隐藏 dzIdle"分支，实测完成后预览显示、占位文案隐藏；v=9
+  - **结论丢失修复（同日）**：二次扩充会覆盖含 JSON 的第一遍输出，导致部分文物结论（年代/文化/置信度）为空 → 结论提取提前到扩充之前，再从最终文本兜底一次；前端缺失时显示"未知"；v=10
+  - **剪贴板粘贴上传（同日）**：document 级 paste 监听（Ctrl+V），从 clipboardData.items 取 image 文件走同一 handle 流程；上传区提示更新"拖拽 / 点击 / 粘贴（Ctrl+V）上传"；实测粘贴 png 全链路出结果；v=11
+  - **骨架屏浪花修复（同日）**：原浪花为 `background-position` 动画且色带硬边，到 -140% 即跳回起点显突兀 → 改为渐变软边高亮条（`::before` + `transform: translateX` 平移 0→300%），左进右出完全移出框外再循环，reduced-motion 同步禁用；实测平移 29→912px；v=9(styles)
 </details>
 
 ---

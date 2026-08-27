@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f1e6" />
+    <title>文物断代与鉴定 · 智能分析</title>
+    <link rel="stylesheet" href="styles.css?v=9" />
+</head>
+
+<body>
+    <!-- 顶栏（纸轴 + 印章） -->
+    <header class="topbar">
+        <div class="topbar-inner">
+            <span class="brand">
+                <svg class="brand-seal" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+                    <rect x="2.5" y="2.5" width="19" height="19" rx="3" fill="currentColor" />
+                    <text x="12" y="17" text-anchor="middle" font-size="13" fill="#f7f1e6" font-family="serif">文</text>
+                </svg>
+                <span class="brand-text">
+                    <span class="brand-name">文物断代 · 鉴定</span>
+                    <span class="brand-sub">ARTIFACT CHRONOLOGY</span>
+                </span>
+            </span>
+            <button id="statusBtn" class="pill" type="button">检测服务</button>
+        </div>
+        <div class="hairline" aria-hidden="true"></div>
+    </header>
+
+    <main class="page">
+        <!-- 首屏 -->
+        <section class="hero">
+            <p class="kicker">——&nbsp;AI 考古鉴定&nbsp;——</p>
+            <h1 class="display">让每一件文物<br />说出它的身世</h1>
+            <p class="subhead">上传文物图片，系统结合视觉特征检索、知识图谱与大语言模型，生成断代鉴定报告与证据链。</p>
+            <div class="ornament" aria-hidden="true"><span></span>◆<span></span></div>
+            <span class="hero-glyph" aria-hidden="true">鉴</span>
+        </section>
+
+        <!-- 上传区（装裱框） -->
+        <section class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="上传文物图片">
+            <img id="preview" class="dz-preview" hidden alt="预览" />
+            <div class="dz-idle" id="dzIdle">
+                <svg class="dz-icon" viewBox="0 0 24 24" width="54" height="54" fill="none" stroke="currentColor"
+                    stroke-width="1.3" aria-hidden="true">
+                    <path d="M9.8 3h4.4c.5 0 .9.4.9.9V4c0 .9-.7 1.6-1.5 1.6h-3.2C9.7 5.6 9 4.9 9 4v-.1c0-.5.4-.9.9-.9z"
+                        stroke-linejoin="round" />
+                    <path d="M8 5.6c-1.2 2.2-2.5 4.9-2.5 8.2a6.5 6.5 0 0 0 13 0c0-3.3-1.3-6-2.5-8.2"
+                        stroke-linejoin="round" />
+                    <path d="M10.3 11h3.4" stroke-linecap="round" />
+                </svg>
+                <p class="dz-title">将文物图片置于此处</p>
+                <p class="dz-sub">拖拽 / 点击 / 粘贴（Ctrl+V）上传 · JPG / PNG / WEBP</p>
+            </div>
+            <div class="dz-busy" id="dzBusy" hidden>
+                <div class="spinner" aria-hidden="true"></div>
+                <p class="dz-title">正在鉴定…</p>
+                <p class="dz-sub">视觉特征 → 相似检索 → 知识图谱 → 大模型分析</p>
+            </div>
+            <input id="fileInput" type="file" accept="image/*" hidden />
+        </section>
+
+        <!-- 结果区（分析期间显示骨架屏，完成后显示内容） -->
+        <section id="results" class="results" hidden>
+            <div class="results-head">
+                <h2 class="results-title">鉴定报告</h2>
+                <span id="elapsed" class="elapsed" hidden></span>
+            </div>
+
+            <!-- 骨架屏 -->
+            <div id="skeleton" class="skeleton" hidden>
+                <div class="sk-card sk-conclusion"></div>
+                <div class="sk-card sk-report"></div>
+                <div class="sk-grid">
+                    <div class="sk-card"></div>
+                    <div class="sk-card"></div>
+                </div>
+            </div>
+
+            <!-- 真实内容 -->
+            <div id="content" class="content" hidden>
+                <div class="card conclusion-card reveal">
+                    <div class="card-label">鉴定结论</div>
+                    <div class="conclusion-row">
+                        <div class="con-item"><span class="con-k">年代</span><span id="conPeriod" class="con-v">—</span>
+                        </div>
+                        <div class="con-item"><span class="con-k">文化</span><span id="conCulture" class="con-v">—</span>
+                        </div>
+                        <div class="con-item"><span class="con-k">置信度</span><span id="conConf"
+                                class="con-v con-conf">—</span></div>
+                    </div>
+                </div>
+
+                <div class="card reveal d1">
+                    <div class="card-label">智能分析</div>
+                    <div id="llmAnalysis" class="llm-text"></div>
+                </div>
+
+                <div class="grid">
+                    <div class="card reveal d2">
+                        <div class="card-label">相似文物</div>
+                        <ul id="simList" class="sim-list"></ul>
+                    </div>
+                    <div class="card reveal d3">
+                        <div class="card-label">证据链图谱</div>
+                        <div id="graph" class="graph-canvas"></div>
+                    </div>
+                </div>
+            </div>
+
+            <p id="serviceNote" class="note" hidden></p>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="ornament" aria-hidden="true"><span></span>◆<span></span></div>
+    </footer>
+
+    <script src="app.js?v=11"></script>
+</body>
+
+</html>
