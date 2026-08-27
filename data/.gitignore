@@ -4,5 +4,7 @@
 /quality
 # LoRA 微调数据集（可重建，DVC 管理）
 /lora
+# 质量评估报告/原始结果（可重建）
+/eval
 # 特征图片下载缓存（可重建，不做版本管理）
 /features/**/images/
