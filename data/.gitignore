@@ -2,5 +2,7 @@
 /clean
 /annotated
 /quality
+# LoRA 微调数据集（可重建，DVC 管理）
+/lora
 # 特征图片下载缓存（可重建，不做版本管理）
 /features/**/images/

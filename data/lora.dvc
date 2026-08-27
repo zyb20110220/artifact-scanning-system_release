@@ -1,0 +1,6 @@
+outs:
+- md5: e643f51543e3916cbf728c2d7addf254.dir
+  size: 1591162
+  nfiles: 1
+  hash: md5
+  path: lora

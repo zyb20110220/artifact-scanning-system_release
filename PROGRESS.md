@@ -356,8 +356,8 @@
 | 5.2 | 考古 Prompt 模板库（10+ 场景） | ✅ | 2026-08-26 | 10+ 场景模板（断代/文化/材质/器型/真伪等） |
 | 5.3 | 证据链构建引擎 | ✅ | 2026-08-26 | 检索+图谱+标注整合为证据链 |
 | 5.4 | 结构化报告生成 | ✅ | 2026-08-26 | JSON 报告（结论+置信度+证据链），便于前端渲染 |
-| 5.5 | LoRA 微调数据准备（2000+ 条） | ⬜ | | |
-| 5.6 | LoRA 微调训练 → 部署 | ⬜ | | |
+| 5.5 | LoRA 微调数据准备（2000+ 条） | ✅ | 2026-08-27 | 2263 条 (image, instruction, answer)；7 场景模板；493 带图文物；DVC 上传 MinIO |
+| 5.6 | LoRA 微调训练 → 部署 | ⬜ | | 需 NVIDIA GPU（本机无）→ 用 Colab/云端 |
 | 5.7 | LLM 输出质量评估（考古专家盲评） | ⬜ | | |
 
 ### 进度日志
@@ -406,6 +406,15 @@
       集群(5G)+模型(3.1G)≈8.1G 可共存；下次 `wsl --shutdown` 重启 WSL 后生效
     - 恢复：`k3d cluster start artifact-scanning` 已恢复，节点 Ready，核心服务（data/minio、data/postgresql、milvus、llm/ollama、monitoring）全部 Running
   - 后续：将来完整运行需在 `.wslconfig` 生效（WSL 重启）后同时承载集群 + qwen2.5-vl:3b；或将 LLM 推理改为云端 API 以降低本机内存
+
+- [x] 2026-08-27：LoRA 微调数据准备（阶段 5.5）
+  - 交付：src/artifact_scan/lora_data.py + data/lora/train.jsonl（2263 条）
+  - 数据：从 493 个带图文物的标注（data/features/images/ + meta.ndjson + annotated/records.ndjson）生成
+  - 格式：LLaVA/Qwen2-VL 兼容 conversations 格式（`<image>` + instruction → answer），含 metadata（artifact_id/scenario/title/source）
+  - 场景：7 类（dating 378 / culture 492 / material 29 / form 110 / decoration 268 / overview 493 / report 493），按标签条件生成
+  - 质量校验：2263 条全含本地图片、无空答案、无缺 `<image>` 标记；覆盖 493 个文物；答案长度 37-506（平均 153）
+  - 管理：`data/.gitignore` 新增 `/lora`；`dvc add data/lora` 生成 `data/lora.dvc`；`dvc push -r minio` 上传 MinIO（2 files pushed）
+  - 说明：数据为模板式蒸馏构造（以标注为 teaching signal），供 5.6 LoRA 训练；5.6 训练需 NVIDIA GPU（本机无）→ 用 Colab/云端
 </details>
 
 ---
