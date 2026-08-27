@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f7f1e6" />
     <title>文物断代与鉴定 · 智能分析</title>
-    <link rel="stylesheet" href="styles.css?v=9" />
+    <link rel="stylesheet" href="styles.css?v=14" />
 </head>
 
 <body>
@@ -97,27 +97,47 @@
                     <div id="llmAnalysis" class="llm-text"></div>
                 </div>
 
-                <div class="grid">
-                    <div class="card reveal d2">
-                        <div class="card-label">相似文物</div>
-                        <ul id="simList" class="sim-list"></ul>
-                    </div>
-                    <div class="card reveal d3">
-                        <div class="card-label">证据链图谱</div>
-                        <div id="graph" class="graph-canvas"></div>
-                    </div>
+                <div class="card reveal d2">
+                    <div class="card-label">相似文物</div>
+                    <div id="simGallery" class="sim-gallery sim-gallery-h"></div>
+                </div>
+
+                <div class="card reveal d3">
+                    <div class="card-label">时间轴 · 文化分布</div>
+                    <div id="timeline" class="timeline"></div>
+                    <div id="cultureZone" class="culture-zone"></div>
+                </div>
+
+                <div class="card reveal d4">
+                    <div class="card-label">证据链图谱 <span class="hint">悬停查看详情</span></div>
+                    <div id="graph" class="graph-canvas"></div>
                 </div>
             </div>
 
             <p id="serviceNote" class="note" hidden></p>
         </section>
+
+        <!-- 文物详情弹窗 -->
+        <div id="detailModal" class="modal" hidden>
+            <div class="modal-backdrop" id="modalBackdrop"></div>
+            <div class="modal-card" role="dialog" aria-modal="true" aria-label="文物详情">
+                <button type="button" class="modal-close" id="modalClose" aria-label="关闭">×</button>
+                <img id="detailImg" class="detail-img" alt="" />
+                <div class="detail-body">
+                    <h3 id="detailTitle" class="detail-title"></h3>
+                    <div id="detailMeta" class="detail-meta"></div>
+                    <p id="detailDesc" class="detail-desc"></p>
+                    <a id="detailUrl" class="detail-url" target="_blank" rel="noopener">查看馆藏来源 ↗</a>
+                </div>
+            </div>
+        </div>
     </main>
 
     <footer class="footer">
         <div class="ornament" aria-hidden="true"><span></span>◆<span></span></div>
     </footer>
 
-    <script src="app.js?v=11"></script>
+    <script src="app.js?v=17"></script>
 </body>
 
 </html>

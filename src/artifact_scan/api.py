@@ -207,7 +207,26 @@ def _evidence_summary(similar, graph):
     return "\n\n".join(parts)
 
 
-def _milvus_recall(query_views, topk=5, cand=20):
+_ROOT = os.path.dirname(_FRONTEND)
+
+
+def _load_annotated():
+    """id -> 完整标注记录（含 labels/description/url/artist 等）。"""
+    rec = {}
+    try:
+        with open(os.path.join(_ROOT, "data", "annotated", "records.ndjson"),
+                  encoding="utf-8") as fh:
+            for line in fh:
+                if not line.strip():
+                    continue
+                r = json.loads(line)
+                rec[str(r["id"])] = r
+    except Exception:
+        pass
+    return rec
+
+
+def _milvus_recall(query_views, topk=10, cand=20):
     """多路召回：对每个视图查询 Milvus，RRF 融合返回 Top-K 相似 id。"""
     from pymilvus import MilvusClient
     from .feature.recall import VIEWS
@@ -217,6 +236,8 @@ def _milvus_recall(query_views, topk=5, cand=20):
     metas = load_meta()
     id2title = {str(m["id"]): m.get("title", "") for m in metas}
     id2source = {str(m["id"]): m.get("source", "") for m in metas}
+    id2img = {str(m["id"]): m.get("image_url", "") for m in metas}
+    annotated = _load_annotated()
 
     K = 60
     scores = {}
@@ -233,8 +254,17 @@ def _milvus_recall(query_views, topk=5, cand=20):
     ranked = sorted(scores.items(), key=lambda t: -t[1])[:topk]
     out = []
     for cid, sc in ranked:
-        out.append({"id": cid, "title": id2title.get(cid, ""),
-                    "source": id2source.get(cid, ""), "score": round(sc, 4)})
+        rec = annotated.get(cid, {})
+        lab = rec.get("labels") or {}
+        out.append({
+            "id": cid, "title": id2title.get(cid, ""),
+            "source": id2source.get(cid, ""), "score": round(sc, 4),
+            "image_url": id2img.get(cid, ""),
+            "description": rec.get("description", ""),
+            "period": lab.get("period"),
+            "culture": lab.get("culture"),
+            "url": rec.get("url", ""),
+        })
     return out
 
 
