@@ -42,7 +42,8 @@ def search(client, query_views, model, dim, topk=5, cand=20,
     sources = {str(m["id"]): m.get("source", "") for m in metas}
 
     # 1) 多路召回（RRF 融合 → 候选 id + rrf 分）
-    cand_ids = [cid for cid, _ in recall(client, query_views, topk=cand, cand=cand)]
+    cand_ids = [cid for cid, _ in recall(
+        client, query_views, topk=cand, cand=cand)]
 
     # 2) 图谱增强（3.3）：候选与 query 共享 culture/period 加分
     boost = {}

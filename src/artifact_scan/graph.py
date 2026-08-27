@@ -126,9 +126,11 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="知识图谱（阶段 4）")
     ap.add_argument("--uri", default=_URI)
     ap.add_argument("--password", default=_AUTH[1])
-    ap.add_argument("--import", dest="do_import", action="store_true", help="导入图谱")
+    ap.add_argument("--import", dest="do_import",
+                    action="store_true", help="导入图谱")
     ap.add_argument("--stats", action="store_true", help="统计")
-    ap.add_argument("--query", action="store_true", help="执行 Cypher 查询库演示(4.5)")
+    ap.add_argument("--query", action="store_true",
+                    help="执行 Cypher 查询库演示(4.5)")
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
@@ -155,7 +157,8 @@ def main(argv=None):
             print("== 时期推断 (culture=%s) ==" % culture)
             print(json.dumps(period_infer(driver, culture), ensure_ascii=False))
             print("== 文物关联 (culture=%s) ==" % culture)
-            print(json.dumps(similar_artifacts(driver, culture, 5), ensure_ascii=False))
+            print(json.dumps(similar_artifacts(
+                driver, culture, 5), ensure_ascii=False))
     driver.close()
 
 

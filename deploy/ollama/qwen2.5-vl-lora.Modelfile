@@ -1,0 +1,25 @@
+# ============================================================
+# qwen2.5-vl-lora.Modelfile —— 阶段 5.6 本地部署（LoRA 微调版）
+# 复用已导入本机 Ollama 的基座模型 qwen2.5-vl:3b，叠加云端训练的 GGUF LoRA adapter。
+# 用法：
+#   1) 先把云端导出的 GGUF LoRA adapter 拷到本机，例如 ollama-models/lora_model.gguf
+#   2) 在项目根运行：
+#        ollama create qwen2.5-vl-lora -f deploy/ollama/qwen2.5-vl-lora.Modelfile
+#   3) 测试：
+#        ollama run qwen2.5-vl-lora
+#   注意：ADAPTER 路径为容器内可见路径（本机 docker 容器映射 ollama-models/ -> /root/.ollama）。
+#         若用宿主机 CLI，路径需与本机 ollama 模型/文件一致。
+# ============================================================
+
+# 基座（已在本机 Ollama 中存在的视觉模型）
+FROM qwen2.5-vl:3b
+
+# 云端训练导出的 GGUF LoRA adapter（相对路径，供容器内解析）
+ADAPTER /root/.ollama/lora_model.gguf
+
+SYSTEM """你是一名专业的考古文物断代与鉴定专家。当用户提供文物图片时，请结合图片内容，从以下角度进行分析：
+1. 年代判断：根据器型、纹饰、材质推断大致年代
+2. 文化归属：推断可能的文化类型与地域
+3. 材质与工艺：分析材质与制作工艺
+4. 真伪与保存状况：给出鉴定意见
+请用中文输出，结构清晰，语言专业。"""

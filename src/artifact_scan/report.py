@@ -52,7 +52,8 @@ def build_evidence(artifact_id, topk=5, graph_driver=None, milvus=None):
         import numpy as np
         fused = np.load("data/features/fused/fusion.npy").astype(np.float32)
         metas = _load_meta()
-        idx = next((i for i, m in enumerate(metas) if str(m["id"]) == str(artifact_id)), None)
+        idx = next((i for i, m in enumerate(metas) if str(
+            m["id"]) == str(artifact_id)), None)
         if idx is not None:
             res = milvus.search("artifact_fusion", data=fused[idx:idx + 1],
                                 limit=topk, output_fields=["title", "source"])
@@ -72,9 +73,11 @@ def build_evidence(artifact_id, topk=5, graph_driver=None, milvus=None):
                 "cultures": d.get("cultures"), "periods": d.get("periods"),
                 "materials": d.get("materials"),
             }
-            culture = (evidence["graph_evidence"]["culture_trace"]["cultures"] or [None])[0]
+            culture = (evidence["graph_evidence"]
+                       ["culture_trace"]["cultures"] or [None])[0]
             if culture:
-                evidence["graph_evidence"]["period_infer"] = period_infer(graph_driver, culture)
+                evidence["graph_evidence"]["period_infer"] = period_infer(
+                    graph_driver, culture)
     return evidence
 
 

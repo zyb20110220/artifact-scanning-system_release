@@ -357,7 +357,7 @@
 | 5.3 | 证据链构建引擎 | ✅ | 2026-08-26 | 检索+图谱+标注整合为证据链 |
 | 5.4 | 结构化报告生成 | ✅ | 2026-08-26 | JSON 报告（结论+置信度+证据链），便于前端渲染 |
 | 5.5 | LoRA 微调数据准备（2000+ 条） | ✅ | 2026-08-27 | 2263 条 (image, instruction, answer)；7 场景模板；493 带图文物；DVC 上传 MinIO |
-| 5.6 | LoRA 微调训练 → 部署 | ⬜ | | 需 NVIDIA GPU（本机无）→ 用 Colab/云端 |
+| 5.6 | LoRA 微调训练 → 部署 | ⬜ | | 训练需 NVIDIA GPU（本机无）；链路已就绪：训练脚本/打包/指南/本地Modelfile，训练在 Colab 执行 |
 | 5.7 | LLM 输出质量评估（考古专家盲评） | ⬜ | | |
 
 ### 进度日志
@@ -415,6 +415,13 @@
   - 质量校验：2263 条全含本地图片、无空答案、无缺 `<image>` 标记；覆盖 493 个文物；答案长度 37-506（平均 153）
   - 管理：`data/.gitignore` 新增 `/lora`；`dvc add data/lora` 生成 `data/lora.dvc`；`dvc push -r minio` 上传 MinIO（2 files pushed）
   - 说明：数据为模板式蒸馏构造（以标注为 teaching signal），供 5.6 LoRA 训练；5.6 训练需 NVIDIA GPU（本机无）→ 用 Colab/云端
+
+- [x] 2026-08-27：LoRA 微调训练链路准备（阶段 5.6 前置）
+  - 交付：src/artifact_scan/lora_package.py（打包）+ src/artifact_scan/lora_train.py（训练）+ docs/lora-training.md（指南）+ deploy/ollama/qwen2.5-vl-lora.Modelfile（本地模板）
+  - 打包：`lora_package.py` 把 train.jsonl 图片复制为扁平 `images/` 布局并改写路径，生成 `data/lora/colab_bundle/` + `colab_bundle.zip`（493 图，164.5 MB）
+  - 训练：`lora_train.py` 基于 Qwen2.5-VL-3B + PEFT QLoRA（默认 4bit），LLaVA/Qwen2-VL 数据集 -> 处理器 chat 格式 -> 仅监督 assistant 部分；输出 PEFT adapter
+  - 本地部署模板：`qwen2.5-vl-lora.Modelfile` 复用本机 `qwen2.5-vl:3b` 基座 + `ADAPTER` 叠加 GGUF LoRA + 考古 SYSTEM 提示词
+  - 结论：**5.6 训练本体需在 Colab/云端执行**（本机无 GPU）；产物（PEFT adapter / GGUF LoRA）拷回本地即可按模板部署，落地到本机 Ollama + CPU 推理（已实测 3B ~150s/图）
 </details>
 
 ---

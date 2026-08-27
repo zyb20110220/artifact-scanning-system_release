@@ -244,7 +244,8 @@ def build_dataset(per_artifact=None, limit=None, seed=42, selected=None):
         samples = filtered
 
     if selected:
-        samples = [s for s in samples if s["metadata"]["artifact_id"] in selected]
+        samples = [s for s in samples if s["metadata"]
+                   ["artifact_id"] in selected]
 
     if limit:
         samples = samples[:limit]
@@ -263,8 +264,10 @@ def write_jsonl(samples, out):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="LoRA 微调数据准备（阶段 5.5）")
-    ap.add_argument("--out", default="data/lora/train.jsonl", help="输出 JSONL 路径")
-    ap.add_argument("--per-artifact", type=int, default=0, help="每件文物保留样本数（0=全部）")
+    ap.add_argument("--out", default="data/lora/train.jsonl",
+                    help="输出 JSONL 路径")
+    ap.add_argument("--per-artifact", type=int,
+                    default=0, help="每件文物保留样本数（0=全部）")
     ap.add_argument("--limit", type=int, default=0, help="仅生成前 N 条（调试用）")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--verbose", action="store_true")
@@ -272,13 +275,15 @@ def main(argv=None):
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(levelname)s %(message)s")
 
-    samples = build_dataset(per_artifact=args.per_artifact, limit=args.limit, seed=args.seed)
+    samples = build_dataset(per_artifact=args.per_artifact,
+                            limit=args.limit, seed=args.seed)
     write_jsonl(samples, args.out)
 
     # 统计
     by_sc = {}
     for s in samples:
-        by_sc[s["metadata"]["scenario"]] = by_sc.get(s["metadata"]["scenario"], 0) + 1
+        by_sc[s["metadata"]["scenario"]] = by_sc.get(
+            s["metadata"]["scenario"], 0) + 1
     logger.info("场景分布：%s", by_sc)
     print("总样本数: %d" % len(samples))
 

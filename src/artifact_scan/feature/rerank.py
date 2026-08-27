@@ -97,7 +97,9 @@ def train(feats, pairs, epochs=80, lr=1e-3, batch=256, seed=0):
         total = 0.0
         for i in range(0, len(arr), batch):
             b = idx[i:i + batch]
-            qi = arr[b, 0]; ci = arr[b, 1]; y = torch.from_numpy(arr[b, 2]).float()
+            qi = arr[b, 0]
+            ci = arr[b, 1]
+            y = torch.from_numpy(arr[b, 2]).float()
             logits = model(x[qi], x[ci])
             loss = F.binary_cross_entropy_with_logits(logits, y)
             opt.zero_grad()
@@ -105,7 +107,8 @@ def train(feats, pairs, epochs=80, lr=1e-3, batch=256, seed=0):
             opt.step()
             total += loss.item() * len(b)
         if (ep + 1) % 20 == 0:
-            logger.info("epoch %s/%s loss %.4f", ep + 1, epochs, total / len(arr))
+            logger.info("epoch %s/%s loss %.4f", ep +
+                        1, epochs, total / len(arr))
     model.eval()
     return model
 
@@ -130,7 +133,8 @@ def rerank_candidates(model, feats, topk=5, cand=20):
         order = order_cos
         if model is not None:
             with torch.no_grad():
-                scores = model(x[i:i + 1].expand(len(cands), -1), x[cands]).numpy()
+                scores = model(
+                    x[i:i + 1].expand(len(cands), -1), x[cands]).numpy()
             order = np.argsort(-scores)[:topk]
         pick = cands[order]
         rerank_total += (ccodes[pick] == ccodes[i]).sum() / topk

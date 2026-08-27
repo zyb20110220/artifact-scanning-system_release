@@ -33,7 +33,8 @@ def _load_codes(field):
         if not l.strip():
             continue
         r = json.loads(l)
-        pcmap[str(r["id"])] = (r.get("labels") or {}).get(field) or r.get(field)
+        pcmap[str(r["id"])] = (r.get("labels") or {}).get(
+            field) or r.get(field)
     classes, code = ["unknown"], []
     for m in metas:
         lab = pcmap.get(str(m["id"]), "unknown")
@@ -116,7 +117,8 @@ def main(argv=None):
     ap.add_argument("--topk", type=int, default=5)
     ap.add_argument("--cand", type=int, default=20)
     ap.add_argument("--model-path", default="data/features/rerank_model.pt")
-    ap.add_argument("--label", default="culture", choices=["period", "culture"])
+    ap.add_argument("--label", default="culture",
+                    choices=["period", "culture"])
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
@@ -142,7 +144,7 @@ def main(argv=None):
     print("检索 A/B 评估（label=%s, topk=%d）：" % (args.label, args.topk))
     print("=" * 66)
     print("  %-18s %-9s %-9s %-7s" % ("策略", "P@%d" % args.topk,
-                                     "R@%d" % args.topk, "MRR"))
+                                      "R@%d" % args.topk, "MRR"))
     for name, fn in strategies:
         mat = fn()
         p, r, m = _metrics(mat, codes, args.topk)

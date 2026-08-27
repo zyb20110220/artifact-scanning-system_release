@@ -42,7 +42,8 @@ def _load_codes(metas, field="period"):
             if not line.strip():
                 continue
             r = json.loads(line)
-            pcmap[str(r["id"])] = (r.get("labels") or {}).get(field) or r.get(field)
+            pcmap[str(r["id"])] = (r.get("labels") or {}).get(
+                field) or r.get(field)
     classes, code = ["unknown"], {}
     for m in metas:
         lab = pcmap.get(str(m["id"]), "unknown")
@@ -66,7 +67,8 @@ def evaluate(client, topk=5, cand=20, limit=None, field="period"):
             n = np.linalg.norm(q)
             qviews[name] = q / (n if n else 1.0)
         res = recall(client, qviews, topk=topk, cand=cand)
-        hits = sum(1 for r in res if codes.get(r[0]) == codes.get(str(metas[i]["id"])))
+        hits = sum(1 for r in res if codes.get(
+            r[0]) == codes.get(str(metas[i]["id"])))
         total += hits / topk
     return total / limit
 
@@ -160,7 +162,8 @@ def main(argv=None):
     for name, coll, path in VIEWS:
         feats = np.load(path).astype(np.float32)
         q = feats[args.query_idx]
-        n = np.linalg.norm(q); q = q / (n if n else 1.0)
+        n = np.linalg.norm(q)
+        q = q / (n if n else 1.0)
         qviews[name] = q
 
     res = recall(client, qviews, topk=args.topk, cand=args.cand)
@@ -169,7 +172,8 @@ def main(argv=None):
         args.query_idx, m["id"], m.get("title", ""), m.get("source", "")))
     title_map = {str(x["id"]): x.get("title", "") for x in metas}
     for i, (rid, sc) in enumerate(res, 1):
-        print("  #%d id=%s rrf=%.4f %s" % (i, rid, sc, title_map.get(str(rid), "")))
+        print("  #%d id=%s rrf=%.4f %s" %
+              (i, rid, sc, title_map.get(str(rid), "")))
 
 
 if __name__ == "__main__":
