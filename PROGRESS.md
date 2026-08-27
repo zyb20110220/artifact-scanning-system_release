@@ -417,7 +417,7 @@
   - 说明：数据为模板式蒸馏构造（以标注为 teaching signal），供 5.6 LoRA 训练；5.6 训练需 NVIDIA GPU（本机无）→ 用 Colab/云端
 
 - [x] 2026-08-27：LoRA 微调训练链路准备（阶段 5.6 前置）
-  - 交付：src/artifact_scan/lora_package.py（打包）+ src/artifact_scan/lora_train.py（训练）+ docs/lora-training.md（指南）+ deploy/ollama/qwen2.5-vl-lora.Modelfile（本地模板）
+  - 交付：src/artifact_scan/lora_package.py（打包）+ src/artifact_scan/lora_train.py（训练）+ notebooks/Qwen25VL_LoRA_Train.ipynb（Colab 训练笔记本）+ docs/lora-training.md（指南）+ deploy/ollama/qwen2.5-vl-lora.Modelfile（本地模板）
   - 打包：`lora_package.py` 把 train.jsonl 图片复制为扁平 `images/` 布局并改写路径，生成 `data/lora/colab_bundle/` + `colab_bundle.zip`（493 图，164.5 MB）
   - 训练：`lora_train.py` 基于 Qwen2.5-VL-3B + PEFT QLoRA（默认 4bit），LLaVA/Qwen2-VL 数据集 -> 处理器 chat 格式 -> 仅监督 assistant 部分；输出 PEFT adapter
   - 本地部署模板：`qwen2.5-vl-lora.Modelfile` 复用本机 `qwen2.5-vl:3b` 基座 + `ADAPTER` 叠加 GGUF LoRA + 考古 SYSTEM 提示词
