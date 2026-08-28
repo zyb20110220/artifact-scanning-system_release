@@ -107,9 +107,11 @@
 
         const fd = new FormData();
         fd.append("file", file);
+        const fastEl = document.getElementById("fastToggle");
+        const fast = fastEl ? fastEl.checked : false;
         const t0 = performance.now();
         try {
-            const res = await fetch("/api/analyze", { method: "POST", body: fd });
+            const res = await fetch("/api/analyze" + (fast ? "?fast=1" : ""), { method: "POST", body: fd });
             if (!res.ok) throw new Error("HTTP " + res.status);
             const data = await res.json();
             const secs = ((performance.now() - t0) / 1000).toFixed(1);

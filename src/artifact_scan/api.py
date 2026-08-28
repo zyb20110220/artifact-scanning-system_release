@@ -7,12 +7,15 @@
 # 说明：各服务用懒加载 + try/except，不可用时降级并在 services/degraded 中标注。
 # ============================================================
 """阶段 6 后端 API。"""
+import asyncio
 import io
 import json
 import logging
 import os
 import re
 import tempfile
+import threading
+import time
 from collections import Counter
 
 import numpy as np
@@ -35,14 +38,17 @@ app = FastAPI(title="文物断代与鉴定系统 API", version="0.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"],
                    allow_methods=["*"], allow_headers=["*"])
 
-# 特征模型缓存（懒加载，CPU）
+# 特征模型缓存（懒加载，CPU；加锁防并发重复加载）
 _models = {}
+_model_lock = threading.Lock()
 
 
 def get_model(name):
     if name not in _models:
-        from .feature.model import FeatureModel
-        _models[name] = FeatureModel(name, device="cpu")
+        with _model_lock:
+            if name not in _models:
+                from .feature.model import FeatureModel
+                _models[name] = FeatureModel(name, device="cpu")
     return _models[name]
 
 
@@ -52,9 +58,25 @@ def _l2(v):
     return (v / n) if n else v
 
 
-def _query_views(image_path):
-    """对上传图提取各视图特征（dinov2/siglip/registers），fused 用均值近似。"""
+def _img_b64(path, max_side=512):
+    """读取图片并等比缩放到 max_side（LLM 用，减 token 提速），返回 base64。"""
     from PIL import Image
+    import base64
+    img = Image.open(path).convert("RGB")
+    w, h = img.size
+    if max(w, h) > max_side:
+        scale = max_side / max(w, h)
+        img = img.resize((max(1, int(w * scale)), max(1, int(h * scale))),
+                         Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=85)
+    return base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+def _query_views(image_path):
+    """对上传图提取各视图特征（dinov2/siglip/registers，三模型并行），fused 用均值近似。"""
+    from PIL import Image
+    import concurrent.futures
     img = Image.open(image_path).convert("RGB")
     # 视图名 -> FeatureModel 注册名
     view_to_model = {
@@ -62,10 +84,14 @@ def _query_views(image_path):
         "siglip": "siglip-base",
         "registers": "dinov2-registers-base",
     }
-    views = {}
-    for view, model_name in view_to_model.items():
-        model = get_model(model_name)
-        views[view] = model.extract_one(img)
+
+    def run_one(item):
+        view, model_name = item
+        return view, get_model(model_name).extract_one(img)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+        pairs = list(ex.map(run_one, view_to_model.items()))
+    views = {view: vec for view, vec in pairs}
     # fused: 三视图归一化均值作为查询（近似融合，配合 IP/cosine 检索）
     fused = _l2(
         np.mean([views["dinov2"], views["siglip"], views["registers"]], axis=0))
@@ -75,10 +101,8 @@ def _query_views(image_path):
 
 def _ollama_analyze(image_path, model="qwen2.5-vl:3b"):
     """调用 Ollama 对图片做断代鉴定，返回文本分析。"""
-    import base64
     import requests
-    with open(image_path, "rb") as fh:
-        b64 = base64.b64encode(fh.read()).decode("ascii")
+    b64 = _img_b64(image_path, max_side=512)
     prompt = (
         "你是一位资深文物鉴定专家。请根据这幅文物图片出具一份完整、详实的鉴定报告，"
         "全文不少于 400 字，用中文撰写，按下述结构分段：\n"
@@ -93,7 +117,7 @@ def _ollama_analyze(image_path, model="qwen2.5-vl:3b"):
     )
     body = {"model": model, "prompt": prompt, "images": [b64],
             "stream": False,
-            "options": {"num_ctx": 4096, "num_predict": 1400, "temperature": 0.3}}
+            "options": {"num_ctx": 4096, "num_predict": 700, "temperature": 0.3}}
     r = requests.post(f"{_OLLAMA}/api/generate", json=body, timeout=900)
     r.raise_for_status()
     return r.json().get("response", "")
@@ -154,13 +178,11 @@ def _expand_llm_report(text):
 
 def _ensure_report_depth(image_path, text, model="qwen2.5-vl:3b", min_chars=200):
     """模型输出过短（如仅 JSON）时，追加一次调用生成详细文字报告。"""
-    import base64
     import requests
     compact = re.sub(r"\s+", "", _strip_code_fence(text))
     if len(compact) >= min_chars:
         return text
-    with open(image_path, "rb") as fh:
-        b64 = base64.b64encode(fh.read()).decode("ascii")
+    b64 = _img_b64(image_path, max_side=512)
     prompt = (
         "你是一位资深文物鉴定专家。请针对这幅文物写一份不少于 500 字的详细鉴定报告，"
         "用中文撰写，依次论述：1) 年代判断及其依据（器型演变、纹饰风格、工艺特征等可见细节）；"
@@ -205,6 +227,24 @@ def _evidence_summary(similar, graph):
             f"【证据链】相似文物共 {len(arts)} 件，图谱证据 {len(edges)} 条"
             f"（{rel_txt}），关联要素：{ent_txt}。这些要素支撑上述断代判断。")
     return "\n\n".join(parts)
+
+
+def _fast_conclusion(similar, graph):
+    """快速模式结论：由最近邻相似文物 + 图谱要素推导（不调 LLM）。"""
+    per, cul = None, None
+    if similar:
+        per = similar[0].get("period")
+        cul = similar[0].get("culture")
+    ents = (graph or {}).get("nodes", []) if graph else []
+    pers = [n.get("label") for n in ents if n.get("type") == "period"]
+    culs = [n.get("label") for n in ents if n.get("type") == "culture"]
+    per = per or (pers[0] if pers else None)
+    cul = cul or (culs[0] if culs else None)
+    conf = None
+    if similar and similar[0].get("score") is not None:
+        conf = round(0.5 + 0.4 * min(1.0, similar[0]["score"] * 10), 2)
+        conf = min(conf, 0.99)
+    return {"period": per, "culture": cul, "confidence": conf}
 
 
 _ROOT = os.path.dirname(_FRONTEND)
@@ -344,7 +384,7 @@ def health():
 
 
 @app.post("/api/analyze")
-async def analyze(file: UploadFile = File(...)):
+async def analyze(file: UploadFile = File(...), fast: bool = False):
     data = await file.read()
     if not data:
         raise HTTPException(400, "未收到图片")
@@ -356,59 +396,87 @@ async def analyze(file: UploadFile = File(...)):
 
     services = {}
     result = {"image": file.filename, "services": services, "degraded": False}
+    timings = {}
+    t0 = time.perf_counter()
 
-    # 1) LLM 断代分析（核心，线程池执行避免阻塞事件循环）
-    try:
-        text = await run_in_threadpool(_ollama_analyze, tmp_path)
-        via_llm = _extract_llm_json(text)  # 先提取结论（第一遍输出含 JSON）
-        text = await run_in_threadpool(_ensure_report_depth, tmp_path, text)
-        result["llm_analysis"] = _expand_llm_report(text)
-        if not via_llm:  # 兜底：从最终文本再尝试一次
-            via_llm = _extract_llm_json(text)
-        result["conclusion"] = {
-            "period": via_llm.get("period"),
-            "culture": via_llm.get("culture"),
-            "confidence": via_llm.get("confidence"),
-        }
-        services["llm"] = "up"
-    except Exception as exc:
-        result["llm_analysis"] = ""
-        result["degraded"] = True
-        services["llm"] = "down"
-        logger.warning("LLM 分析失败：%s", exc)
-
-    # 2) 相似文物检索（Milvus + 特征）
-    try:
-        qv = await run_in_threadpool(_query_views, tmp_path)
-        result["similar"] = await run_in_threadpool(_milvus_recall, qv)
-        services["milvus"] = "up"
-    except Exception as exc:
-        result["similar"] = []
-        result["degraded"] = True
-        services["milvus"] = "down"
-        logger.warning("检索失败：%s", exc)
-
-    # 3) 图谱证据（Neo4j）
-    sim_ids = [s["id"] for s in result.get("similar", [])]
-    if sim_ids:
+    # 链1：LLM 断代分析（fast 模式跳过）
+    async def llm_chain():
+        if fast:
+            return None
+        t = time.perf_counter()
         try:
-            result["graph"] = await run_in_threadpool(_graph_evidence, sim_ids[:5])
-            services["neo4j"] = "up"
+            text = await run_in_threadpool(_ollama_analyze, tmp_path)
+            via = _extract_llm_json(text)  # 先提取结论（第一遍输出含 JSON）
+            text = await run_in_threadpool(_ensure_report_depth, tmp_path, text)
+            timings["llm_s"] = round(time.perf_counter() - t, 2)
+            return {"text": text, "via": via}
         except Exception as exc:
+            timings["llm_s"] = round(time.perf_counter() - t, 2)
+            services["llm"] = "down"
+            result["degraded"] = True
+            logger.warning("LLM 分析失败：%s", exc)
+            return None
+
+    # 链2：特征提取（并行）→ 相似检索 → 图谱证据
+    async def retr_chain():
+        t = time.perf_counter()
+        try:
+            qv = await run_in_threadpool(_query_views, tmp_path)
+            result["similar"] = await run_in_threadpool(_milvus_recall, qv)
+            services["milvus"] = "up"
+        except Exception as exc:
+            result["similar"] = []
+            result["degraded"] = True
+            services["milvus"] = "down"
+            logger.warning("检索失败：%s", exc)
+        timings["retr_s"] = round(time.perf_counter() - t, 2)
+        t = time.perf_counter()
+        sim_ids = [s["id"] for s in result.get("similar", [])]
+        if sim_ids:
+            try:
+                result["graph"] = await run_in_threadpool(_graph_evidence, sim_ids[:5])
+                services["neo4j"] = "up"
+            except Exception as exc:
+                result["graph"] = {"nodes": [], "edges": []}
+                services["neo4j"] = "down"
+                logger.warning("图谱失败：%s", exc)
+        else:
             result["graph"] = {"nodes": [], "edges": []}
-            services["neo4j"] = "down"
-            logger.warning("图谱失败：%s", exc)
+        timings["graph_s"] = round(time.perf_counter() - t, 2)
+
+    # LLM 与检索两条链并行执行（墙钟 ≈ max，而非相加）
+    llm_res, _ = await asyncio.gather(llm_chain(), retr_chain())
+
+    if fast:
+        # 快速模式：结论由近邻 + 图谱推导，免 LLM
+        result["conclusion"] = _fast_conclusion(
+            result.get("similar", []), result.get("graph", {}))
+        result["llm_analysis"] = "（快速鉴定模式，未生成详细文字报告）\n\n" + _evidence_summary(
+            result.get("similar", []), result.get("graph", {}))
+        services["llm"] = "skip"
+    elif llm_res is not None:
+        text, via = llm_res["text"], llm_res["via"]
+        result["llm_analysis"] = _expand_llm_report(text)
+        if not via:  # 兜底：从最终文本再尝试一次
+            via = _extract_llm_json(text)
+        result["conclusion"] = {
+            "period": via.get("period"),
+            "culture": via.get("culture"),
+            "confidence": via.get("confidence"),
+        }
+        services.setdefault("llm", "up")
+        # 追加数据驱动的比对与证据链摘要
+        summary = _evidence_summary(result.get(
+            "similar", []), result.get("graph", {}))
+        if summary:
+            base = result.get("llm_analysis") or ""
+            result["llm_analysis"] = (
+                base + "\n\n" + summary).strip() if base else summary
     else:
-        result["graph"] = {"nodes": [], "edges": []}
+        result["llm_analysis"] = ""
 
-    # 4) 追加数据驱动的比对与证据链摘要
-    summary = _evidence_summary(result.get(
-        "similar", []), result.get("graph", {}))
-    if summary:
-        base = result.get("llm_analysis") or ""
-        result["llm_analysis"] = (
-            base + "\n\n" + summary).strip() if base else summary
-
+    timings["total_s"] = round(time.perf_counter() - t0, 2)
+    result["timings"] = timings
     os.unlink(tmp_path)
     return result
 

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f7f1e6" />
     <title>文物断代与鉴定 · 智能分析</title>
-    <link rel="stylesheet" href="styles.css?v=14" />
+    <link rel="stylesheet" href="styles.css?v=15" />
 </head>
 
 <body>
@@ -60,6 +60,11 @@
             </div>
             <input id="fileInput" type="file" accept="image/*" hidden />
         </section>
+
+        <label class="fast-toggle">
+            <input type="checkbox" id="fastToggle" />
+            <span>快速鉴定（&lt;5s，不含详细报告）</span>
+        </label>
 
         <!-- 结果区（分析期间显示骨架屏，完成后显示内容） -->
         <section id="results" class="results" hidden>
@@ -137,7 +142,7 @@
         <div class="ornament" aria-hidden="true"><span></span>◆<span></span></div>
     </footer>
 
-    <script src="app.js?v=17"></script>
+    <script src="app.js?v=18"></script>
 </body>
 
 </html>

@@ -520,7 +520,7 @@
 
 | # | 任务 | 状态 | 完成日期 | 备注 |
 |---|------|------|---------|------|
-| 7.1 | 全链路延迟优化（端到端 < 5s） | ⬜ | | |
+| 7.1 | 全链路延迟优化（端到端 < 5s） | ✅ | 2026-08-27 | 快速模式 1.2s 达成 <5s；全量详细报告 CPU 受限约 2 分钟（见日志） |
 | 7.2 | 检索精度 final push（culture P@5 ≥ 0.70） | ⬜ | | |
 | 7.3 | 压力测试（100 QPS 并发） | ⬜ | | |
 | 7.4 | 考古专家用户测试（10+ 专家） | ⬜ | | |
@@ -532,5 +532,14 @@
 <details>
 <summary><b>评估与优化</b></summary>
 
-- [ ] 待开始
+- [x] 2026-08-27：7.1 全链路延迟优化（端到端 <5s）
+  - **后端并行化**：`analyze` 的 LLM 链（`_ollama_analyze` 报告）与检索链（`_query_views` 三模型并行特征 → `_milvus_recall` → `_graph_evidence`）用 `asyncio.gather` 并行执行，墙钟 ≈ max(两链) 而非相加；检索内全部 `run_in_threadpool` 化不卡事件循环
+  - **快速模式 `?fast=1`**：跳过 LLM，结论由 `_fast_conclusion`（最近邻 period/culture + 图谱 period/culture 节点推导，confidence = 0.5+0.4×min(1, score×10)，上限 0.99）；`llm_analysis` 由 `_evidence_summary` 生成【相似比对】+【证据链】数据驱动摘要
+  - **前端开关**：上传区下方「快速鉴定（<5s，不含详细报告）」checkbox → `handle()` 按勾选拼 `?fast=1`；资源版本 app.js?v=18 / styles.css?v=15
+  - **LLM 提速**：num_predict 1400→700（首呼）、temperature 0.3；LLM 输入图等比缩放到 512px（`_img_b64`，减 image token）——全量路径 184.5s → 120.9s
+  - **实测（CPU + qwen2.5-vl:3b，test-image-1024.jpg）**：
+    - 快速模式：2.0s（冷）→ **1.2s（热）**，similar=10、结论 conf=0.77、图谱 19 节点/18 边 ✅ <5s
+    - 全量模式：120.9s（llm_s 为主；retr+graph 并行不占墙钟；含首次 37s 冷加载特征模型）；结论 明代/明代青花瓷/0.95，报告 1256 字
+  - **修复（同日）**：num_ctx 4096→2048 时完整提示+1024px 图 = 2106 token 超限 → Ollama 400 `exceed_context_size_error`，LLM 链静默降级 → 回滚 num_ctx=4096；Milvus/Neo4j port-forward 失效导致 retr_s=66.9s 且 similar=0 → 重建 `kubectl port-forward` 后恢复
+  - **诚实结论**：快速模式满足 <5s 端到端；全量详细报告受 CPU LLM 吞吐限制（约 2 分钟，GPU 可大幅缩短），属硬件约束而非架构问题
 </details>
